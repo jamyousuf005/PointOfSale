@@ -19,8 +19,12 @@ connectMongoDb(mongo_url)
 
 app.use(express.json())
 app.use(express.urlencoded({extended:false}))
-app.use(cors())
+app.use(cors('*'))
 app.use(bodyParser.json())
+
+app.get('/',(req,res)=>{
+    res.send('im running')
+})
 
 app.use('/auth',userRouter)
 
