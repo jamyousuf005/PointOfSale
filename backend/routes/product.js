@@ -6,11 +6,15 @@ const{
      editProduct,
      showOneProduct
     } = require('../controllers/handleProducts')
+const ensureAuthenticated = require('../middlewares/auth')
 
 const router = express.Router()
 
-router.route("/").get(showProducts).post(addProducts)
-
-router.route('/:id').delete(deleteProduct).put(editProduct).get(showOneProduct)
+router.route("/")
+  .all(ensureAuthenticated) 
+  .get(showProducts)
+  .post(addProducts);
+  
+router.route('/:id').all(ensureAuthenticated).delete(deleteProduct).put(editProduct).get(showOneProduct)
 
 module.exports=router

@@ -1,6 +1,52 @@
 import React, { useState } from 'react';
 import { ChevronDown, RefreshCw, HelpCircle } from 'lucide-react';
 import DragDropImageUpload from '../components/DragDropUpload';
+import { motion } from 'framer-motion';
+
+// Variants from the Category component
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const uniformVariants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.95,
+    filter: 'blur(2px)',
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    filter: 'blur(0px)',
+    transition: {
+      duration: 0.4,
+      ease: 'easeOut',
+    },
+  },
+};
+
+const gridVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1 },
+};
 
 const CustomSelect = ({ value, onChange, options, placeholder, name, hasError }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,7 +72,13 @@ const CustomSelect = ({ value, onChange, options, placeholder, name, hasError })
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
+        >
           {options.map((option, index) => (
             <button
               key={index}
@@ -37,7 +89,7 @@ const CustomSelect = ({ value, onChange, options, placeholder, name, hasError })
               {option}
             </button>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );
@@ -119,8 +171,7 @@ export default function AddProductForm() {
     if (!validateForm()) {
       return;
     }
-    
-    // Convert form data to a plain object
+
     const payload = {};
     for (const key in formData) {
       if (formData[key] !== null && formData[key] !== '') {
@@ -135,10 +186,11 @@ export default function AddProductForm() {
     }
 
     try {
-      const res = await fetch('http://localhost:8001/api/products', {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify(payload),
       });
@@ -202,15 +254,36 @@ export default function AddProductForm() {
   };
 
   return (
-    <div className="p-7">
+    <motion.div
+      className="p-7"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <form onSubmit={handleSubmit}>
-        <div className="mx-auto p-6 bg-white rounded-lg shadow-sm">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-6">Add Product</h1>
-          <p className="text-sm text-gray-500 mb-6">
-            The field labels marked with <span className="text-red-500">*</span> are required input fields.
-          </p>
+        <motion.div
+          className="mx-auto p-6 bg-white rounded-lg shadow-sm"
+          variants={uniformVariants}
+        >
+          <motion.h1
+            className="text-2xl font-semibold text-gray-900 mb-6"
+            variants={uniformVariants}
+          >
+            Add Product
+          </motion.h1>
+          <motion.p
+            className="text-sm text-gray-500 mb-6"
+            variants={uniformVariants}
+          >
+            The field labels marked with <span className="text-red-500">*</span> are required input
+            fields.
+          </motion.p>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <motion.div
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+            variants={gridVariants}
+          >
+            {/* Input fields with no individual motion */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Product Type <span className="text-red-500">*</span>
@@ -254,12 +327,14 @@ export default function AddProductForm() {
                     errors.productCode ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
-                <button
+                <motion.button
                   type="button"
                   className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-md hover:bg-gray-200 focus:outline-none"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   <RefreshCw className="h-4 w-4 text-gray-600" />
-                </button>
+                </motion.button>
               </div>
               {errors.productCode && <p className="text-red-500 text-sm mt-1">{errors.productCode}</p>}
             </div>
@@ -332,7 +407,9 @@ export default function AddProductForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Purchase Unit <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Purchase Unit <span className="text-red-500">*</span>
+              </label>
               <CustomSelect
                 value={formData.purchaseUnit}
                 onChange={handleInputChange}
@@ -385,7 +462,9 @@ export default function AddProductForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Product Tax <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Product Tax <span className="text-red-500">*</span>
+              </label>
               <CustomSelect
                 value={formData.productTax}
                 onChange={handleInputChange}
@@ -428,13 +507,13 @@ export default function AddProductForm() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div>
+          <motion.div variants={uniformVariants}>
             <DragDropImageUpload />
-          </div>
+          </motion.div>
 
-          <div className="mt-6">
+          <motion.div className="mt-6" variants={uniformVariants}>
             <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea
               value={formData.description || ''}
@@ -443,11 +522,11 @@ export default function AddProductForm() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter product description..."
             />
-          </div>
+          </motion.div>
 
-          <div>
+          <motion.div variants={uniformVariants}>
             <div className="space-y-6 mt-10">
-              <div>
+              <motion.div variants={uniformVariants}>
                 <label className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -461,7 +540,12 @@ export default function AddProductForm() {
                 </label>
 
                 {formData.hasWarehousePrice && (
-                  <div className="mt-4 space-y-4">
+                  <motion.div
+                    className="mt-4 space-y-4"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <div className="grid grid-cols-2 gap-4 items-center">
                       <label className="text-gray-700">Excel Communication</label>
                       <input
@@ -478,11 +562,11 @@ export default function AddProductForm() {
                         className="px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 w-full"
                       />
                     </div>
-                  </div>
+                  </motion.div>
                 )}
-              </div>
+              </motion.div>
 
-              <div>
+              <motion.div variants={uniformVariants}>
                 <label className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -494,7 +578,11 @@ export default function AddProductForm() {
                 </label>
 
                 {formData.hasVariant && (
-                  <>
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <input
                       type="text"
                       placeholder="Enter variant separated by a comma (e.g., Red, Blue, Green)"
@@ -510,7 +598,12 @@ export default function AddProductForm() {
                       className="mt-3 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
                     />
                     {formData.variantList?.length > 0 && (
-                      <div className="mt-4 overflow-x-auto">
+                      <motion.div
+                        className="mt-4 overflow-x-auto"
+                        initial={{ opacity: 0, scaleY: 0.8 }}
+                        animate={{ opacity: 1, scaleY: 1 }}
+                        transition={{ duration: 0.3 }}
+                      >
                         <table className="w-full text-sm border">
                           <thead>
                             <tr className="bg-gray-100">
@@ -522,12 +615,12 @@ export default function AddProductForm() {
                           </thead>
                           <tbody>
                             {formData.variantList.map((variant, index) => (
-                              <tr key={index} className="text-center">
+                              <motion.tr key={index} className="text-center" variants={itemVariants}>
                                 <td className="p-2 border">{variant}</td>
                                 <td className="p-2 border">VRT-{index + 1}</td>
                                 <td className="p-2 border">0.00</td>
                                 <td className="p-2 border">
-                                  <button
+                                  <motion.button
                                     type="button"
                                     onClick={() => {
                                       const updatedList = [...formData.variantList];
@@ -536,21 +629,23 @@ export default function AddProductForm() {
                                       handleInputChange('variantString', updatedList.join(', '));
                                     }}
                                     className="text-red-500 hover:text-red-700"
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
                                   >
                                     🗑️
-                                  </button>
+                                  </motion.button>
                                 </td>
-                              </tr>
+                              </motion.tr>
                             ))}
                           </tbody>
                         </table>
-                      </div>
+                      </motion.div>
                     )}
-                  </>
+                  </motion.div>
                 )}
-              </div>
+              </motion.div>
 
-              <div>
+              <motion.div variants={uniformVariants}>
                 <label className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -562,7 +657,12 @@ export default function AddProductForm() {
                 </label>
 
                 {formData.hasPromotion && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                  <motion.div
+                    className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4"
+                    variants={gridVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
                     <input
                       type="number"
                       placeholder="Promotional Price"
@@ -582,22 +682,24 @@ export default function AddProductForm() {
                       onChange={(e) => handleInputChange('promotionEnd', e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
                     />
-                  </div>
+                  </motion.div>
                 )}
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="mt-4">
-            <button
+          <motion.div className="mt-4" variants={uniformVariants}>
+            <motion.button
               type="submit"
               className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition duration-200"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               Submit
-            </button>
-          </div>
-        </div>
+            </motion.button>
+          </motion.div>
+        </motion.div>
       </form>
-    </div>
+    </motion.div>
   );
 }

@@ -1,5 +1,35 @@
 import React, { useState } from 'react';
 import { ChevronDown, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+// Defining the variants for the animation
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const uniformVariants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
 
 const SaleReport = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,12 +75,17 @@ const SaleReport = () => {
   });
 
   return (
-    <div className="p-6">
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {/* <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-          <h1 className="text-lg sm:text-xl font-semibold text-gray-900 text-center">Sale Report</h1>
-        </div> */}
-
+    // Outer layout animated with Framer Motion
+    <motion.div
+      className="p-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div
+        className="bg-white rounded-lg shadow-sm overflow-hidden"
+        variants={uniformVariants}
+      >
         <div className="bg-white mb-4 sm:mb-6">
           <div className="px-4 sm:px-6 py-4 border-gray-200">
             <h1 className="text-lg sm:text-xl font-semibold text-gray-900 text-center">Sale Report</h1>
@@ -181,31 +216,28 @@ const SaleReport = () => {
             </tbody>
           </table>
         </div>
-            
 
-               <div className="bg-white shadow-sm mt-4 sm:mt-6">
-        <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <div className="text-sm text-gray-600 text-center sm:text-left">
-            Showing 1 - 1 (1)
-          </div>
+        <div className="bg-white shadow-sm mt-4 sm:mt-6">
+          <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div className="text-sm text-gray-600 text-center sm:text-left">
+              Showing 1 - 1 (1)
+            </div>
 
-          <div className="flex items-center justify-center space-x-2">
-            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button className="px-3 py-1 bg-purple-600 text-white rounded text-sm font-medium">
-              1
-            </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-              <ChevronRight className="h-4 w-4" />
-            </button>
+            <div className="flex items-center justify-center space-x-2">
+              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button className="px-3 py-1 bg-purple-600 text-white rounded text-sm font-medium">
+                1
+              </button>
+              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-      </div>
-
-      
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

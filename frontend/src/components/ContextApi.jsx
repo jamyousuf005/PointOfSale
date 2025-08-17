@@ -50,40 +50,51 @@ export const ContextProvider = ({ children }) => {
    const [accounts,setAccounts]=useState([])
    
      
-   const updateProduct = (productId, newProductData) => {
-    console.log(productId,newProductData)
-    setProducts((prevProducts) =>
-      prevProducts.map((product) =>
-        product.id === productId ? { ...product, ...newProductData } : product
-      )
-    );
-  };
+  
 
 
     
     useEffect(()=>{
-      fetch('http://localhost:8001/api/accounts')
+     
+    
+      fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts`,{
+        headers:{
+          'Authorization':`Bearer ${localStorage.getItem('token')}`
+        }
+      })
       .then((res)=>res.json())
       .then((data)=> setAccounts(data))
       .catch((err)=>console.log(err))
     },[])
       
     useEffect(()=>{
-         fetch(`http://localhost:8001/api/sales`)
+         fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sales`,{
+        headers:{
+          'Authorization':`Bearer ${localStorage.getItem('token')}`
+        }
+      })
          .then((res)=> res.json())
          .then((data)=> setSales(data))
          .catch((err)=>console.log(err))
     },[])
 
  useEffect(() => {
-       fetch('http://localhost:8001/api/products')
+       fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products`,{
+        headers:{
+          'Authorization':`Bearer ${localStorage.getItem('token')}`
+        }
+      })
       .then((res) => res.json())
       .then((data) => setProducts(data))
       .catch((err) => console.error('Error fetching products:', err))
   }, [])
 
   useEffect(() => {
-         fetch(`http://localhost:8001/api/purchases`)
+         fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase`,{
+        headers:{
+          'Authorization':`Bearer ${localStorage.getItem('token')}`
+        }
+      })
         .then((res)=> res.json())
         .then((data)=> setPurchases(data.showAllPurchases))
         .catch((err)=> console.log('error fetching api',err))
@@ -92,7 +103,7 @@ export const ContextProvider = ({ children }) => {
 
   return (
     <ContextApi.Provider value={{ laptop, laptop2 ,products,setProducts,customers
-    ,purchases,setPurchases,sales,setSales,accounts,setAccounts,updateProduct}}>
+    ,purchases,setPurchases,sales,setSales,accounts,setAccounts}}>
       {children}
     </ContextApi.Provider>
   );

@@ -1,12 +1,16 @@
 const express=require('express')
 
 const {addAccount,showAllAccounts, editAccount, showOne, deleteOne}=require('../controllers/handleAccounts')
+const ensureAuthenticated = require('../middlewares/auth')
 
 
 const router = express.Router()
 
 
-router.route('/').post(addAccount).get(showAllAccounts)
-router.route('/:id').delete(deleteOne).put(editAccount).get(showOne)
+router.route('/')
+.all(ensureAuthenticated)
+.post(addAccount).get(showAllAccounts)
+
+router.route('/:id').all(ensureAuthenticated).delete(deleteOne).put(editAccount).get(showOne)
 
 module.exports=router

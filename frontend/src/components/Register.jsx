@@ -1,37 +1,60 @@
 import React, { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { handleError, handleSuccess } from '../Utils.js';
+import { ToastContainer } from 'react-toastify';
 
 const Register = () => {
-  
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+
+
+  const [singupInfo, setSignupInfo] = useState({
+    name: '',
+    email: '',
+    password: ''
+  })
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    console.log(name, value)
+    setSignupInfo(prevSignupInfo => ({
+      ...prevSignupInfo,
+      [name]: value
+    }))
+  }
+
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
 
+    const { name, email, password } = singupInfo
     if (!name || !email || !password) {
-      alert("Please fill all the fields");
-      return;
+      handleError('please Enter credentials first')
     }
-
-    // try {
-    //   const res = await fetch(`http://localhost:8001/api/users`, {
-    //     method: "POST",
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ name, email, password })
-    //   })
-
-    //   if (res.ok) {
-    //     alert('user Created Successfully')
-    //     navigate('/login')
-    //   }
-    // } catch (err) {
-    //   console.error('Signup failed:', err);
-
-    // }
-
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(singupInfo)
+      })
+      const result = await res.json()
+      const {success,message,error}=result
+      if(success){
+        handleSuccess(message)
+        setTimeout(()=>{
+          navigate('/login')
+        },1000)
+      }else if(error){
+        const details= error?.details[0].message
+        handleError(details)
+      }else if(!success){
+        handleError(message)
+      }
+      console.log(result)
+    } catch (err) { 
+      handleError(err)
+    }
   };
 
   return (
@@ -41,27 +64,30 @@ const Register = () => {
         <form onSubmit={handleRegister} className="space-y-4">
           <input
             type="text"
+            onChange={handleChange}
+            name='name'
             placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={singupInfo.name}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
           <input
             type="email"
+            onChange={handleChange}
+            name='email'
             placeholder="Email"
+            value={singupInfo.email}
             autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
           <input
             type="password"
+            onChange={handleChange}
+            name='password'
+            value={singupInfo.password}
             placeholder="Password"
             autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
@@ -79,6 +105,7 @@ const Register = () => {
           </Link>
         </p>
       </div>
+      <ToastContainer/>
     </div>
   );
 };

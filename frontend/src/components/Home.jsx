@@ -6,7 +6,7 @@ import DashboardWidgets from './DashboardWidgets';
 import BottomWidgets from './BottomWidgets';
 import { motion } from 'framer-motion';
 import * as Chart from 'chart.js';
-
+import { ToastContainer } from 'react-toastify';
 const YearlyReportChart = ({ width = "100%", height = "600px" }) => {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -191,11 +191,13 @@ const uniformVariants = {
 
 const Home = () => {
 
-  const getUser = () => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    return user?.name || "admin";
-  };
-
+     const [loggedIn,setLoggedin]=useState()
+    
+     useEffect(() => {
+      setLoggedin(localStorage.getItem('loggedIn'))
+     }, [])
+     
+  
   return (
     <motion.div 
       className='bg-gray-100 min-h-screen overflow-hidden'
@@ -211,7 +213,7 @@ const Home = () => {
           className='text-xl font-medium text-purple-600'
           variants={uniformVariants}
         >
-          Welcome Mr : {getUser()}
+          Welcome Mr : {loggedIn}
         </motion.h1>
       </motion.div>
 

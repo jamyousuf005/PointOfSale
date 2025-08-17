@@ -1,6 +1,35 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ContextApi } from '../components/ContextApi';
+import { motion } from 'framer-motion';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const uniformVariants = {
+  hidden: { 
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"    
+  },
+  visible: { 
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
 
 const ProductList = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -12,12 +41,10 @@ const ProductList = () => {
 
   const navigate = useNavigate()
 
-
- const filteredProducts = products.filter(product =>
-  (product?.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-   product?.productCode?.toLowerCase().includes(searchTerm.toLowerCase()))
-);
-
+  const filteredProducts = products.filter(product =>
+    (product?.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product?.productCode?.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   const toggleRowSelection = (id) => {
     setSelectedRows(prev =>
@@ -27,44 +54,58 @@ const ProductList = () => {
 
   const toggleAllRows = () => {
     setSelectedRows(prev =>
-  prev.length === filteredProducts.length ? [] : filteredProducts.map(p => p._id)
-);
+      prev.length === filteredProducts.length ? [] : filteredProducts.map(p => p._id)
+    );
   };
- 
+  
   const handleEdit = (action, rowId) => {
-  if (action === 'Edit') {
-    navigate(`/product/edit/${rowId}`);
-  }
-};
-
-  const handleDelete = async(action, rowId) => {
-    if(action==='Delete'){
-      const confirmDelete = window.confirm("Are you sure you want to delete this product")
-      if(!confirmDelete) return;
+    if (action === 'Edit') {
+      navigate(`/product/edit/${rowId}`);
     }
-    try{
-      const res = await fetch(`http://localhost:8001/api/products/${rowId}`,{
-        method:"DELETE",
-      })
+  };
 
-      if(res.ok){
-        setProducts((prev)=> prev.filter(p=> p._id !==rowId))
-        console.log("product deleted")
+  const handleDelete = async (action, rowId) => {
+    if (action === 'Delete') {
+      const confirmDelete = window.confirm("Are you sure you want to delete this product");
+      if (!confirmDelete) return;
+    }
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products/${rowId}`, {
+        method: "DELETE",
+        headers:{
+          'Authorization':`Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (res.ok) {
+        setProducts((prev) => prev.filter(p => p._id !== rowId));
+        console.log("product deleted successfully");
       } else {
-        console.log('failed to delete')
+        console.error('Failed to delete product:', res.status, res.statusText);
+        const errorData = await res.json();
+        console.error("Server error message:", errorData.msg);
       }
-    }catch(err){
-          console.log(err)
+    } catch (err) {
+      console.error("Network or other error:", err);
     }
-    setOpenActionId(null)
+    setOpenActionId(null);
   };
 
 
-
-  return (<>
-    <div className='p-6 '>
-      <div className=" w-full bg-white rounded-lg sahdow-sm p-6">
-        <div className=" sm:p-4 ">
+  return (
+    <motion.div
+      className='p-6'
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div 
+        className="w-full bg-white rounded-lg shadow-sm p-6"
+        variants={uniformVariants}
+      >
+        <motion.div className="sm:p-4" variants={uniformVariants}>
+          {/* Top Buttons */}
           <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={() => navigate('/product/add')} className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base">
               + Add Product
@@ -107,11 +148,11 @@ const ProductList = () => {
               <button className="bg-purple-500 hover:bg-purple-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Column Visibility</button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white shadow-md overflow-hidden">
+        <div className="bg-white shadow-md overflow-hidden mt-6">
           <div className="overflow-x-auto">
-            <table className="w-full ">
+            <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-4 text-left">
@@ -156,15 +197,13 @@ const ProductList = () => {
                     <td className="px-3 py-4 text-sm text-gray-600">{product.brand}</td>
                     <td className="px-3 py-4 text-sm text-gray-600">{product.category}</td>
                     <td className="px-3 py-4 text-sm text-gray-600">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${product.alertQuantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${product.alertQuantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {product.alertQuantity}
                       </span>
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-600">{product.productUnit}</td>
                     <td className="px-3 py-4 text-sm font-medium text-gray-900">
-                     ${parseFloat(product.productPrice).toLocaleString()}
-
+                      ${parseFloat(product.productPrice).toLocaleString()}
                     </td>
                     <td className="px-3 py-4 relative">
                       <button
@@ -223,10 +262,8 @@ const ProductList = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </>
-
+      </motion.div>
+    </motion.div>
   );
 };
 

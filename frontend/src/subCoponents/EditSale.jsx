@@ -2,7 +2,7 @@ import React, { useState, useContext } from "react";
 import { Trash2 } from 'lucide-react';
 
 import { ContextApi } from "../components/ContextApi";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useEffect } from "react";
 
 const EditSale = () => {
@@ -24,6 +24,7 @@ const EditSale = () => {
   const [productSearch, setProductSearch] = useState('');
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [quantities, setQuantities] = useState({});
+  const navigate= useNavigate()
 
   const warehouses = ['Main Warehouse', 'Secondary Warehouse', 'Backup Warehouse'];
   const taxOptions = [
@@ -85,9 +86,12 @@ const calculateGrandTotal = () => {
 };
  
   useEffect(() => {
-    console.log('im running')
   if (id) {
-    fetch(`http://localhost:8001/api/sales/${id}`)
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sales/${id}`,{
+        headers:{
+          'Authorization':`Bearer ${localStorage.getItem('token')}`
+        }
+      })
       .then(res => {
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
@@ -138,14 +142,16 @@ const calculateGrandTotal = () => {
         totalAmount: calculateGrandTotal(),
       };
 
-      const res = await fetch(`http://localhost:8001/api/sales/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sales/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+                    'Authorization':`Bearer ${localStorage.getItem('token')}`
+ },
         body: JSON.stringify(saleData)
       });
       const data = await res.json();
-      
       console.log(data);
+      navigate('/sale/list')
     } catch (err) {
       console.log(err);
     }

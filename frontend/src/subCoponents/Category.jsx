@@ -1,5 +1,45 @@
 import React, { useState, useContext } from 'react';
 import { ContextApi } from '../components/ContextApi';
+import { motion } from 'framer-motion';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const gridVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+};
+
+const uniformVariants = {
+  hidden: { 
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"    
+  },
+  visible: { 
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
 
 const Category = () => {
   const { laptop } = useContext(ContextApi);
@@ -43,18 +83,32 @@ const Category = () => {
   };
 
   return (
-    <div className='p-6'>
-      <div className="w-full bg-white rounded-lg shadow-sm p-6">
-        <div className="sm:p-4">
+    <motion.div 
+      className='p-6 bg-gray-100 min-h-screen'
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div 
+        className="w-full bg-white rounded-lg shadow-sm p-6"
+        variants={uniformVariants}
+      >
+        <motion.div className="sm:p-4" variants={uniformVariants}>
+          {/* Top Buttons */}
           <div className="flex flex-wrap gap-2 mb-4">
-            <button className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base">
+            <button 
+              className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base"
+            >
               + Add Category
             </button>
-            <button className="bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1">
+            <button 
+              className="bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1"
+            >
               📁 Import Category
             </button>
           </div>
 
+          {/* Search + Records */}
           <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
             <div className="flex items-center gap-2">
               <select
@@ -88,9 +142,10 @@ const Category = () => {
               <button className="bg-purple-500 hover:bg-purple-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Column Visibility</button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white shadow-sm overflow-hidden">
+        {/* Table */}
+        <div className="bg-white shadow-sm overflow-hidden mt-6">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
@@ -195,8 +250,8 @@ const Category = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

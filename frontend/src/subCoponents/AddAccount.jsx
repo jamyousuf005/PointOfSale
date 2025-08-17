@@ -1,13 +1,45 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+
+// Defining the variants for the animation
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const uniformVariants = {
+  hidden: { 
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"    
+  },
+  visible: { 
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
 
 const AddAccount = () => {
-
   const [formData, setFormData] = useState({
     accountNumber: '',
     name: '',
     initialBalance: 0,
     note: '',
   });
+
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,17 +53,21 @@ const AddAccount = () => {
     e.preventDefault();
 
     try {
-      const res = await fetch(`http://localhost:8001/api/accounts`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: JSON.stringify(formData)
-
-      })
+      });
+      
       if (!res.ok) {
         const errorData = await res.json();
         console.error('API Error:', errorData);
         throw new Error('Network response was not ok');
       }
+      
       const data = await res.json();
       console.log('Success:', data);
 
@@ -42,17 +78,24 @@ const AddAccount = () => {
         note: '',
       });
       alert('Account Added successfully!');
+      navigate('/account/list');
     } catch (err) {
-      console.log(err)
+      console.log(err);
     }
-
-
-
   };
 
   return (
-    <div className='p-6'>
-      <div className="bg-white p-6 rounded-lg shadow w-full">
+    // Outer layout animated with Framer Motion
+    <motion.div
+      className='p-6'
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div
+        className="bg-white p-6 rounded-lg shadow w-full"
+        variants={uniformVariants}
+      >
         <h2 className="text-lg font-semibold mb-2">Add Account</h2>
         <p className="text-sm italic mb-4 text-gray-600">
           The field labels marked with <span className="text-red-500">*</span> are required input fields.
@@ -116,8 +159,8 @@ const AddAccount = () => {
             Submit
           </button>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

@@ -11,7 +11,7 @@ const Dashboard = () => {
       <div className="">
         <Navbar onMenuClick={() => setIsSidebarOpen((prev) => !prev)} />
       </div>
-
+      
       <div className="flex flex-col md:flex-row">
       
         <Sidebar className=''

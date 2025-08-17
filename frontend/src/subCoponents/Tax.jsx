@@ -1,5 +1,37 @@
 import React, { useState } from "react";
 import { Search, ChevronDown, ChevronLeft, ChevronRight, Plus, Upload } from "lucide-react";
+import { motion } from "framer-motion";
+
+// Define the animation variants for the outer container.
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+// Define animation variants for the inner content.
+const uniformVariants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
+
 
 const Tax = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -8,8 +40,18 @@ const Tax = () => {
   const taxData = []; // Your actual data goes here
 
   return (
-    <div className="p-6  min-h-screen">
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    // Apply the container variants to the outermost div
+    <motion.div
+      className="p-6 min-h-screen"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Apply the uniform variants to the main content div */}
+      <motion.div 
+        className="bg-white rounded-lg shadow-sm overflow-hidden"
+        variants={uniformVariants}
+      >
         {/* Header with Action Buttons */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -146,8 +188,8 @@ const Tax = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

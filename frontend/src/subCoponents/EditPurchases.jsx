@@ -19,12 +19,16 @@ const EditPurchases = () => {
 
     const [productSearch, setProductSearch] = useState('');
     const [allProducts, setAllProducts] = useState([]);
-    const navigate=useNavigate() 
+    const navigate = useNavigate()
 
     useEffect(() => {
         // Fetch the specific purchase data to edit
         if (id) {
-            fetch(`http://localhost:8001/api/purchases/${id}`)
+            fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase/${id}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }   
+            })
                 .then(res => res.json())
                 .then(data => {
                     setFormData({
@@ -43,8 +47,11 @@ const EditPurchases = () => {
                 .catch(err => console.error("Error fetching purchase:", err));
         }
 
-        // Fetch all products for the search functionality
-        fetch('http://localhost:8001/api/products')
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        })
             .then(res => res.json())
             .then(data => setAllProducts(data))
             .catch(err => console.error("Error fetching all products:", err));
@@ -115,7 +122,7 @@ const EditPurchases = () => {
             return p;
         }));
     };
-    
+
     const removeProduct = (idToRemove) => {
         setProducts(prev => prev.filter(product => product._id !== idToRemove));
     };
@@ -128,7 +135,7 @@ const EditPurchases = () => {
 
         const totalBeforeTax = productTotal - orderDiscount + shippingCost;
         const taxAmount = totalBeforeTax * (orderTaxRate / 100);
-        
+
         return totalBeforeTax + taxAmount;
     };
 
@@ -142,14 +149,17 @@ const EditPurchases = () => {
 
         const submissionData = {
             ...formData,
-            products: products.map(({_id, ...product}) => ({ ...product, tax: formData.orderTax, discount: formData.discount, subTotal: calculateSubTotalForProduct(product)})),
+            products: products.map(({ _id, ...product }) => ({ ...product, tax: formData.orderTax, discount: formData.discount, subTotal: calculateSubTotalForProduct(product) })),
             total: calculateGrandTotal(),
         };
-        
+
         try {
-            const res = await fetch(`http://localhost:8001/api/purchases/${id}`, {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 body: JSON.stringify(submissionData),
             });
 
@@ -161,31 +171,32 @@ const EditPurchases = () => {
 
             const updatedPurchase = await res.json();
             console.log('Purchase updated successfully:', updatedPurchase);
-        
-              navigate('/purchases/list')
+
+            navigate('/purchase/list')
+
         } catch (err) {
             console.error('Error submitting form:', err);
         }
-         
-    };   
-    
-    
-    const calculateSubTotalForProduct = (product) => {
-      const cost = parseFloat(product.productCost) || 0;
-      const quantity = parseFloat(product.quantity) || 0;
-      const orderTaxRate = parseFloat(formData.orderTax) || 0;
-      const orderDiscount = parseFloat(formData.discount) || 0;
 
-      const totalCost = cost * quantity;
-      const discountAmount = totalCost * (orderDiscount / 100);
-      const subtotalBeforeTax = totalCost - discountAmount;
-      const taxAmount = subtotalBeforeTax * (orderTaxRate / 100);
-      
-      return subtotalBeforeTax + taxAmount;
     };
 
 
-    const filteredProducts = allProducts.filter(p => 
+    const calculateSubTotalForProduct = (product) => {
+        const cost = parseFloat(product.productCost) || 0;
+        const quantity = parseFloat(product.quantity) || 0;
+        const orderTaxRate = parseFloat(formData.orderTax) || 0;
+        const orderDiscount = parseFloat(formData.discount) || 0;
+
+        const totalCost = cost * quantity;
+        const discountAmount = totalCost * (orderDiscount / 100);
+        const subtotalBeforeTax = totalCost - discountAmount;
+        const taxAmount = subtotalBeforeTax * (orderTaxRate / 100);
+
+        return subtotalBeforeTax + taxAmount;
+    };
+
+
+    const filteredProducts = allProducts.filter(p =>
         productSearch.trim() !== '' && (
             p.productCode.toLowerCase().includes(productSearch.toLowerCase()) ||
             p.productName.toLowerCase().includes(productSearch.toLowerCase())

@@ -25,7 +25,7 @@ app.use(bodyParser.json())
 app.use('/auth',userRouter)
 
 app.use('/api/products',productsRouter)
-app.use('/api/purchases',purchaseRouter)
+app.use('/api/purchase',purchaseRouter)
 app.use('/api/sales',salesRouter)
 app.use('/api/accounts',accountsRouter)
 

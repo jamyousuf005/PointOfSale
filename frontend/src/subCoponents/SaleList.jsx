@@ -2,6 +2,35 @@ import React, { useContext, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ContextApi } from '../components/ContextApi';
+import { motion } from 'framer-motion';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const uniformVariants = {
+  hidden: { 
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"    
+  },
+  visible: { 
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
 
 const SaleList = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,7 +38,7 @@ const SaleList = () => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
 
- const {products,sales,setSales}=useContext(ContextApi)
+  const {products,sales,setSales}=useContext(ContextApi)
 
   const filteredSales = sales.filter(sale =>
     sale._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -29,19 +58,23 @@ const SaleList = () => {
   };
 
   const handleEdit = (action,rowId)=>{
-       if(action==='Edit'){
-        navigate(`/sale/edit/${rowId}`)
-       }
+    if(action==='Edit'){
+      navigate(`/sale/edit/${rowId}`)
+    }
   }
 
-const handleDelete = async (action, rowId) => {
+  const handleDelete = async (action, rowId) => {
     if (action === 'Delete') {
       const confirmDelete = window.confirm("Are you sure you want to delete this purchase")
       if (!confirmDelete) return;
     }
     try {
-      const res = await fetch(`http://localhost:8001/api/sales/${rowId}`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sales/${rowId}`, {
         method: "DELETE",
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       })
 
       if (res.ok) {
@@ -59,14 +92,22 @@ const handleDelete = async (action, rowId) => {
   const navigate = useNavigate()
 
   return (
-    <div className='p-6'>
-      <div className="w-full bg-white rounded-lg shadow-sm p-6">
+    <motion.div 
+      className='p-6'
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div 
+        className="w-full bg-white rounded-lg shadow-sm p-6"
+        variants={uniformVariants}
+      >
         {/* Header Controls */}
         <div className="sm:p-4">
           <div className="flex flex-wrap gap-2 mb-4">
             <button 
-            onClick={()=>navigate('/sale/add')}
-            className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base">
+              onClick={()=>navigate('/sale/add')}
+              className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base">
               + Add Sale
             </button>
             <button className="bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1">
@@ -136,8 +177,6 @@ const handleDelete = async (action, rowId) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-              
-
                 {filteredSales.map((sale) => (
                   <tr key={sale._id} className="hover:bg-gray-50">
                     <td className="px-3 py-4">
@@ -191,9 +230,6 @@ const handleDelete = async (action, rowId) => {
                     </td>
                   </tr>
                 ))}
-
-               
-                
               </tbody>
             </table>
           </div>
@@ -218,8 +254,8 @@ const handleDelete = async (action, rowId) => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

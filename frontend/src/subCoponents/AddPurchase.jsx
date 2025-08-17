@@ -1,6 +1,35 @@
 import { useContext, useState } from 'react';
 import { ChevronDown, Trash2, Info } from 'lucide-react';
 import { ContextApi } from '../components/ContextApi';
+import { motion } from 'framer-motion';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const uniformVariants = {
+  hidden: { 
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"    
+  },
+  visible: { 
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
 
 const AddPurchase = () => {
   const [formData, setFormData] = useState({
@@ -13,25 +42,23 @@ const AddPurchase = () => {
     note: '',
   });
 
-  const { products, setProducts, customers } = useContext(ContextApi)
-
+  const { products, setProducts, customers } = useContext(ContextApi);
   const [productSearch, setProductSearch] = useState('');
 
   const warehouses = ['Main Warehouse', 'Secondary Warehouse', 'Backup Warehouse'];
 
   const taxOptions = [
-  { label: 'No Tax', value: 0 },
-  { label: 'VAT 5%', value: 5 },
-  { label: 'VAT 10%', value: 10 },
-  { label: 'VAT 15%', value: 15 },
-];
+    { label: 'No Tax', value: 0 },
+    { label: 'VAT 5%', value: 5 },
+    { label: 'VAT 10%', value: 10 },
+    { label: 'VAT 15%', value: 15 },
+  ];
 
   const handleInputChange = (field, value) => {
+    const numericFields=['orderTax','discount','shippingCost'];
+    const processedValue  = numericFields.includes(field) ? Number(value) : value;
 
-     const numericFields=['orderTax','discount','shippingCost']
-     const processedValue  = numericFields.includes(field) ? Number(value) : value
-
-     setFormData(prev => ({
+    setFormData(prev => ({
       ...prev,
       [field]: processedValue
     }));
@@ -59,7 +86,6 @@ const AddPurchase = () => {
     return productTotal + shippingCost - discount;
   };
 
-
   const handleSubmit = async () => {
     if (!formData.warehouse) {
       alert('Please select a warehouse');
@@ -74,26 +100,35 @@ const AddPurchase = () => {
     console.log('Form submitted:', submissionData);
 
     try {
-      const res = await fetch(`http://localhost:8001/api/purchases`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase`, {
         method: 'POST',
-        headers: { 'Content-type': 'application/json' },
+        headers: { 
+          'Content-type': 'application/json',
+          'Authorization':`Bearer ${localStorage.getItem('token')}`
+        },
         body : JSON.stringify(submissionData)
+      });
 
-      })
-
-      const data = await res.json()
-
+      const data = await res.json();
 
     } catch (err) {
-         console.log(err)
+      console.log(err);
     }
 
     alert('Purchase order submitted successfully!');
   };
 
   return (
-    <div className='p-6  '>
-      <div className="p-6 bg-white rounded-lg shadow-sm ">
+    <motion.div 
+      className='p-6'
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div 
+        className="p-6 bg-white rounded-lg shadow-sm"
+        variants={uniformVariants}
+      >
         <h1 className="text-2xl font-semibold text-gray-900 mb-6">Add Purchase</h1>
 
         <div className="space-y-6">
@@ -101,6 +136,7 @@ const AddPurchase = () => {
             The field labels marked with * are required input fields.
           </p>
 
+          {/* First Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -123,7 +159,7 @@ const AddPurchase = () => {
             </div>
 
             <div>
-              <label className="block te  xt-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Supplier
               </label>
               <div className="relative">
@@ -161,7 +197,6 @@ const AddPurchase = () => {
                 <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
               </div>
             </div>
-
           </div>
 
           {/* Product Selection */}
@@ -184,13 +219,12 @@ const AddPurchase = () => {
                 onClick={() => {
                   const foundProduct = products.find(p =>
                     p.productName.toLowerCase().includes(productSearch.toLocaleLowerCase())
-                  )
+                  );
                   if (foundProduct) {
-                    addProduct(foundProduct)
-                    setProductSearch('')
+                    addProduct(foundProduct);
+                    setProductSearch('');
                   }
-                }
-                }
+                }}
                 type="button"
                 className="px-4 py-2 bg-purple-500 font-bold text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
               >
@@ -246,11 +280,10 @@ const AddPurchase = () => {
                           {product.subTotal ? product.subTotal.toFixed(2) : '0.00'}
                         </span>
                       </td>
-                      <td className="px-2 ">
+                      <td className="px-2">
                         <div onClick={removeProduct} className='flex gap-1 py-1 justify-center rounded items-center bg-red-400'>
                           <button> Delete </button>
-                          <span>  <Trash2 className="w-4 h-4" />
-                          </span>
+                          <span> <Trash2 className="w-4 h-4" /></span>
                         </div>
                       </td>
                     </tr>
@@ -272,13 +305,11 @@ const AddPurchase = () => {
                     <td className="px-4 py-3 text-sm text-gray-900">
                       {products.reduce((sum, p) => sum + (parseFloat(p.subTotal) || 0), 0).toFixed(2)}
                     </td>
-
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
-
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
@@ -328,7 +359,6 @@ const AddPurchase = () => {
             </div>
           </div>
 
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Note
@@ -342,7 +372,6 @@ const AddPurchase = () => {
             />
           </div>
 
-
           <div className="flex justify-start">
             <button
               type="button"
@@ -353,7 +382,6 @@ const AddPurchase = () => {
             </button>
           </div>
 
-
           <div className="mt-6 p-4 bg-gray-50 rounded-md">
             <div className="text-right">
               <span className="text-lg font-semibold text-gray-900">
@@ -362,9 +390,9 @@ const AddPurchase = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
-export default AddPurchase;
+export default AddPurchase; 

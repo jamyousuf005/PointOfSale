@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { use, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const EditAccount = () => {
 
@@ -11,7 +11,7 @@ const EditAccount = () => {
   });
 
     const { id } = useParams();
-
+    const navigate = useNavigate()
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,7 +23,11 @@ const EditAccount = () => {
 
   useEffect(() => {
       if(id){
-        fetch(`http://localhost:8001/api/accounts/${id}`)
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts/${id}`,{
+        headers:{
+          'Authorization':`Bearer ${localStorage.getItem('token')}`
+        }
+      })
         .then((res)=>res.json())
         .then((data)=>setFormData(data))
         .catch((err)=>console.log('error fetching data',err))
@@ -35,9 +39,11 @@ const EditAccount = () => {
     e.preventDefault();
 
     try {
-      const res = await fetch(`http://localhost:8001/api/accounts/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+                    'Authorization':`Bearer ${localStorage.getItem('token')}`
+         },
         body: JSON.stringify(formData)
 
       })
@@ -49,9 +55,8 @@ const EditAccount = () => {
       const data = await res.json();
       setFormData(data)
       console.log('Success:', data);
-
-
       alert('Account Updated successfully!');
+      navigate('/account/list')
     } catch (err) {
       console.log(err)
     }

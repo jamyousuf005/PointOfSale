@@ -2,6 +2,35 @@ import React, { useContext, useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ContextApi } from '../components/ContextApi';
+import { motion } from 'framer-motion';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const uniformVariants = {
+  hidden: { 
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"    
+  },
+  visible: { 
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
 
 const PurchaseList = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,9 +38,9 @@ const PurchaseList = () => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
 
+  const { purchases, setPurchases } = useContext(ContextApi);
 
-  const { purchases, setPurchases } = useContext(ContextApi)
-
+  const navigate = useNavigate();
 
   const filteredPurchases = purchases.filter(purchase =>
     purchase.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -26,46 +55,54 @@ const PurchaseList = () => {
 
   const toggleAllRows = () => {
     setSelectedRows(prev =>
-      prev.length === filteredPurchases.length ? [] : filteredPurchases.map(p => p.id)
+      prev.length === filteredPurchases.length ? [] : filteredPurchases.map(p => p._id)
     );
   };
 
-  const navigate = useNavigate()
-  
-
   const handleEdit = (action, rowId) => {
     if (action === 'Edit') {
-      navigate(`/purchases/edit/${rowId}`);
+      navigate(`/purchase/edit/${rowId}`);
     }
   };
 
   const handleDelete = async (action, rowId) => {
     if (action === 'Delete') {
-      const confirmDelete = window.confirm("Are you sure you want to delete this purchase")
+      const confirmDelete = window.confirm("Are you sure you want to delete this purchase");
       if (!confirmDelete) return;
     }
     try {
-      const res = await fetch(`http://localhost:8001/api/purchases/${rowId}`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase/${rowId}`, {
         method: "DELETE",
-      })
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':`Bearer ${localStorage.getItem('token')}`      
+        }
+      });
 
       if (res.ok) {
-        setPurchases((prev) => prev.filter(p => p._id !== rowId))
-        console.log("product deleted")
+        setPurchases((prev) => prev.filter(p => p._id !== rowId));
+        console.log("product deleted");
       } else {
-        console.log('failed to delete')
+        console.log('failed to delete');
       }
     } catch (err) {
-      console.log(err)
+      console.log(err);
     }
-    setOpenActionId(null)
+    setOpenActionId(null);
   };
 
   return (
-    <div className='p-6'>
-      <div className="w-full bg-white rounded-lg shadow-sm p-6">
-
-        <div className="sm:p-4">
+    <motion.div
+      className='p-6'
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div 
+        className="w-full bg-white rounded-lg shadow-sm p-6"
+        variants={uniformVariants}
+      >
+        <motion.div className="sm:p-4" variants={uniformVariants}>
           <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={() => navigate('/purchase/add')} className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base">
               + Add Purchase
@@ -108,10 +145,9 @@ const PurchaseList = () => {
               <button className="bg-purple-500 hover:bg-purple-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Column Visibility</button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-
-        <div className="bg-white shadow-md overflow-hidden">
+        <div className="bg-white shadow-md overflow-hidden mt-6">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
@@ -220,8 +256,8 @@ const PurchaseList = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

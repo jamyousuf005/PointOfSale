@@ -1,4 +1,36 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+
+// Define the animation variants for the outer container.
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+// Define animation variants for the inner content.
+const uniformVariants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
+
 
 export default function Profile() {
   const [profileData, setProfileData] = useState({
@@ -50,8 +82,18 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    // Apply the container variants to the outermost div
+    <motion.div 
+      className="min-h-screen bg-gray-50 p-4 md:p-8"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Apply the uniform variants to the main content div */}
+      <motion.div 
+        className="max-w-7xl mx-auto"
+        variants={uniformVariants}
+      >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Update User Profile Section */}
           <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
@@ -191,7 +233,7 @@ export default function Profile() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

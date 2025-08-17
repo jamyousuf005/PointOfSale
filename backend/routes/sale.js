@@ -1,9 +1,13 @@
 const express = require('express')
 
 const {addSale, showSales, deleteSale, editSale, showOne} = require('../controllers/handleSales')
+const ensureAuthenticated = require('../middlewares/auth')
 
 const router = express.Router()
 
-router.route('/').post(addSale).get(showSales)
-router.route('/:id').delete(deleteSale).put(editSale).get(showOne)
+router.route('/')
+.all(ensureAuthenticated)
+.post(addSale)
+.get(showSales)
+router.route('/:id').all(ensureAuthenticated).delete(deleteSale).put(editSale).get(showOne)
 module.exports=router

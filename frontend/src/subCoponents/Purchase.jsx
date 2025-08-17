@@ -1,4 +1,34 @@
 import React, { useState } from "react";
+import { motion } from 'framer-motion';
+
+// Defining the variants for the animation
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const uniformVariants = {
+  hidden: { 
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"    
+  },
+  visible: { 
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
 
 const Purchase = () => {
   const [recordsPerPage, setRecordsPerPage] = useState('10');
@@ -8,11 +38,20 @@ const Purchase = () => {
   const toggleAllRows = () => {
     // Placeholder logic since no real data
     setSelectedRows([]);
-  };  
+  };
 
   return (
-    <div className="p-6">
-      <div className="w-full bg-white rounded-lg shadow-sm p-6">
+    // Outer layout animated with Framer Motion
+    <motion.div
+      className="p-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div
+        className="w-full bg-white rounded-lg shadow-sm p-6"
+        variants={uniformVariants}
+      >
         {/* Header Section */}
         <div className="sm:p-4">
           <div className="flex flex-wrap gap-2 mb-4">
@@ -116,8 +155,8 @@ const Purchase = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

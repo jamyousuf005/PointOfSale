@@ -1,5 +1,37 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+// Define the animation variants for the outer container.
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+// Define animation variants for the inner content.
+const uniformVariants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
+
 
 const GeneralSettings = () => {
   const [formData, setFormData] = useState({
@@ -54,8 +86,18 @@ const GeneralSettings = () => {
   };
 
   return (
-    <div className="p-6 ">
-      <div className="bg-white rounded-lg shadow-sm p-6 ">
+    // Apply the container variants to the outermost div
+    <motion.div 
+      className="p-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Apply the uniform variants to the main content div */}
+      <motion.div 
+        className="bg-white rounded-lg shadow-sm p-6"
+        variants={uniformVariants}
+      >
         <h1 className="text-xl font-medium text-gray-900 mb-6">General Setting</h1>
         
         <p className="text-sm text-blue-500 italic mb-6">
@@ -258,8 +300,8 @@ const GeneralSettings = () => {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

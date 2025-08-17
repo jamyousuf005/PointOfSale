@@ -3,6 +3,36 @@ import { ChevronDown, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { ContextApi } from '../components/ContextApi';
+import { motion } from 'framer-motion';
+
+// Defining the variants for the animation
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const uniformVariants = {
+  hidden: { 
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"    
+  },
+  visible: { 
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
 
 const ActionMenu = ({ onEdit, onDelete, isOpen, toggleMenu }) => {
   return (
@@ -51,7 +81,7 @@ const AccountList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
-   
+    
   const {accounts,setAccounts}=useContext(ContextApi)
   const navigate = useNavigate();
 
@@ -86,29 +116,42 @@ const AccountList = () => {
   const totalInitialBalance = accounts.reduce((sum, row) => sum + row.initialBalance, 0);
 
   const handleEdit = (id) => {
-           navigate(`/account/edit/${id}`);
+    navigate(`/account/edit/${id}`);
   };
 
   const handleDelete = async(id) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts/${id}`, {
+        method: 'DELETE', 
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization':`Bearer ${localStorage.getItem('token')}`
+        }
+      });
 
-      try{
-          const res=await fetch(`http://localhost:8001/api/accounts/${id}`,{
-            method: 'DELETE',            
-           })
-
-         if(res.ok){
-          setAccounts((prev) => prev.filter(p => p._id !== id))
-          alert('account deleted')
-         }
-      }catch(err){
-          console.log(err)
+      if (res.ok) {
+        setAccounts((prev) => prev.filter(p => p._id !== id));
+        alert('account deleted');
       }
-  
-  setOpenActionId(null)
+    } catch(err) {
+      console.log(err);
+    }
+    
+    setOpenActionId(null);
   }
+
   return (
-    <div className="p-6">
-      <div className="w-full bg-white rounded-lg shadow-sm p-6">
+    // Outer layout animated with Framer Motion
+    <motion.div
+      className="p-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div
+        className="w-full bg-white rounded-lg shadow-sm p-6"
+        variants={uniformVariants}
+      >
         {/* Header Controls */}
         <div className="sm:p-4">
           <div className="flex flex-wrap gap-2 mb-4">
@@ -183,7 +226,6 @@ const AccountList = () => {
                     <td className="px-3 py-4">
                       <input
                         type="checkbox"
-                        // checked={selectedRows.includes(account._id)}
                         onChange={() => toggleRowSelection(account._id)}
                         className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                       />
@@ -240,8 +282,8 @@ const AccountList = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
