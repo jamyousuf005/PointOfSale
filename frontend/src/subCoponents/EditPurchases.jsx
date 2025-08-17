@@ -2,6 +2,37 @@ import { useContext, useEffect, useState } from 'react';
 import { ChevronDown, Trash2 } from 'lucide-react';
 import { ContextApi } from '../components/ContextApi';
 import { useNavigate, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
+
+// Define the animation variants for the outer container.
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
+// Define animation variants for the inner content.
+const uniformVariants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.95,
+    filter: "blur(2px)"
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
 
 const EditPurchases = () => {
     const { products, setProducts, customers } = useContext(ContextApi);
@@ -19,7 +50,7 @@ const EditPurchases = () => {
 
     const [productSearch, setProductSearch] = useState('');
     const [allProducts, setAllProducts] = useState([]);
-    const navigate = useNavigate()
+    const navigate = useNavigate();
 
     useEffect(() => {
         // Fetch the specific purchase data to edit
@@ -27,24 +58,22 @@ const EditPurchases = () => {
             fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }   
+                } 
             })
-                .then(res => res.json())
-                .then(data => {
-                    setFormData({
-                        warehouse: data.warehouse,
-                        supplier: data.supplier,
-                        purchaseStatus: data.purchaseStatus,
-                        orderTax: data.orderTax,
-                        discount: data.discount,
-                        shippingCost: data.shippingCost,
-                        note: data.note,
-                    });
-                    setProducts(data.products);
-
-
-                })
-                .catch(err => console.error("Error fetching purchase:", err));
+            .then(res => res.json())
+            .then(data => {
+                setFormData({
+                    warehouse: data.warehouse,
+                    supplier: data.supplier,
+                    purchaseStatus: data.purchaseStatus,
+                    orderTax: data.orderTax,
+                    discount: data.discount,
+                    shippingCost: data.shippingCost,
+                    note: data.note,
+                });
+                setProducts(data.products);
+            })
+            .catch(err => console.error("Error fetching purchase:", err));
         }
 
         fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products`, {
@@ -52,9 +81,9 @@ const EditPurchases = () => {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
         })
-            .then(res => res.json())
-            .then(data => setAllProducts(data))
-            .catch(err => console.error("Error fetching all products:", err));
+        .then(res => res.json())
+        .then(data => setAllProducts(data))
+        .catch(err => console.error("Error fetching all products:", err));
     }, [id]);
 
     const warehouses = ['Main Warehouse', 'Secondary Warehouse', 'Backup Warehouse'];
@@ -172,14 +201,12 @@ const EditPurchases = () => {
             const updatedPurchase = await res.json();
             console.log('Purchase updated successfully:', updatedPurchase);
 
-            navigate('/purchase/list')
+            navigate('/purchase/list');
 
         } catch (err) {
             console.error('Error submitting form:', err);
         }
-
     };
-
 
     const calculateSubTotalForProduct = (product) => {
         const cost = parseFloat(product.productCost) || 0;
@@ -195,7 +222,6 @@ const EditPurchases = () => {
         return subtotalBeforeTax + taxAmount;
     };
 
-
     const filteredProducts = allProducts.filter(p =>
         productSearch.trim() !== '' && (
             p.productCode.toLowerCase().includes(productSearch.toLowerCase()) ||
@@ -204,8 +230,18 @@ const EditPurchases = () => {
     );
 
     return (
-        <div className='p-6'>
-            <div className="p-6 bg-white rounded-lg shadow-sm">
+        // Apply outer container variants
+        <motion.div 
+            className='p-6'
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+        >
+            {/* Apply inner uniform variants */}
+            <motion.div 
+                className="p-6 bg-white rounded-lg shadow-sm"
+                variants={uniformVariants}
+            >
                 <h1 className="text-2xl font-semibold text-gray-900 mb-6">Edit Purchase</h1>
                 <div className="space-y-6">
                     <p className="text-sm text-gray-500 italic">
@@ -414,8 +450,8 @@ const EditPurchases = () => {
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 };
 

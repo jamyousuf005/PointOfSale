@@ -1,5 +1,6 @@
-import React, { use, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 const EditAccount = () => {
 
@@ -10,8 +11,8 @@ const EditAccount = () => {
     note: '',
   });
 
-    const { id } = useParams();
-    const navigate = useNavigate()
+  const { id } = useParams();
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,18 +23,18 @@ const EditAccount = () => {
   };
 
   useEffect(() => {
-      if(id){
-        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts/${id}`,{
-        headers:{
-          'Authorization':`Bearer ${localStorage.getItem('token')}`
+    if (id) {
+      fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       })
-        .then((res)=>res.json())
-        .then((data)=>setFormData(data))
-        .catch((err)=>console.log('error fetching data',err))
-      }
-  }, [id])
-  
+        .then((res) => res.json())
+        .then((data) => setFormData(data))
+        .catch((err) => console.log('error fetching data', err));
+    }
+  }, [id]);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,33 +42,36 @@ const EditAccount = () => {
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json',
-                    'Authorization':`Bearer ${localStorage.getItem('token')}`
-         },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: JSON.stringify(formData)
 
-      })
+      });
       if (!res.ok) {
         const errorData = await res.json();
         console.error('API Error:', errorData);
         throw new Error('Network response was not ok');
       }
       const data = await res.json();
-      setFormData(data)
+      setFormData(data);
       console.log('Success:', data);
       alert('Account Updated successfully!');
-      navigate('/account/list')
+      navigate('/account/list');
     } catch (err) {
-      console.log(err)
+      console.log(err);
     }
-
-
-
   };
 
   return (
     <div className='p-6'>
-      <div className="bg-white p-6 rounded-lg shadow w-full">
+      <motion.div
+        className="bg-white p-6 rounded-lg shadow w-full"
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         <h2 className="text-lg font-semibold mb-2">Edit Account</h2>
         <p className="text-sm italic mb-4 text-gray-600">
           The field labels marked with <span className="text-red-500">*</span> are required input fields.
@@ -131,7 +135,7 @@ const EditAccount = () => {
             Submit
           </button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 };
