@@ -323,18 +323,11 @@ export default function AddProductForm() {
                   type="text"
                   value={formData.productCode}
                   onChange={(e) => handleInputChange('productCode', e.target.value)}
-                  className={`flex-1 px-3 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                     errors.productCode ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
-                <motion.button
-                  type="button"
-                  className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-md hover:bg-gray-200 focus:outline-none"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <RefreshCw className="h-4 w-4 text-gray-600" />
-                </motion.button>
+             
               </div>
               {errors.productCode && <p className="text-red-500 text-sm mt-1">{errors.productCode}</p>}
             </div>

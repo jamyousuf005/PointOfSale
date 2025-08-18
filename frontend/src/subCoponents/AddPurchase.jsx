@@ -1,5 +1,5 @@
 import { useContext, useState } from 'react';
-import { ChevronDown, Trash2, Info } from 'lucide-react';
+import { ChevronDown, Trash2} from 'lucide-react';
 import { ContextApi } from '../components/ContextApi';
 import { motion } from 'framer-motion';
 
@@ -204,16 +204,14 @@ const AddPurchase = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Select Product
             </label>
-            <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gray-400 rounded flex items-center justify-center">
-                <span className="text-white text-sm">📦</span>
-              </div>
+            <div className="md:flex flex-wrap items-center space-x-2">
+              
               <input
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
                 placeholder="Please type product code and select..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <button
                 onClick={() => {
@@ -226,7 +224,7 @@ const AddPurchase = () => {
                   }
                 }}
                 type="button"
-                className="px-4 py-2 bg-purple-500 font-bold text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 md:m-t0 mt-2 bg-purple-500 font-bold text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
               >
                 Add
               </button>
