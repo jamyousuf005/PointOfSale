@@ -14,7 +14,6 @@ const Register = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    console.log(name, value)
     setSignupInfo(prevSignupInfo => ({
       ...prevSignupInfo,
       [name]: value

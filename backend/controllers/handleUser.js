@@ -22,12 +22,10 @@ async function handleUserSignUp(req, res) {
 async function handleUserLogin(req, res) {
     try {
         const { email, password } = req.body;
-
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(403).json({ msg: 'Invalid email or password', success: false });
         }
-
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(403).json({ msg: 'Invalid email or password', success: false });
@@ -37,7 +35,6 @@ async function handleUserLogin(req, res) {
             process.env.JWT_SECRET,
             {expiresIn:'24h'}
         )
-
 
         return res.status(201)
         .json({
