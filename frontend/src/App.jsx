@@ -1,12 +1,12 @@
-import { ContextProvider } from "./components/ContextApi";
-import Dashboard from "./components/Dashboard";
-import Login from "./components/Login";
-import Register from "./components/Register";
-import Profile from './components/Profile';
-import POS from "./subCoponents/POS";
-import GeneralSettings from "./subCoponents/GeneralSettings";
-import MyTransactions from "./components/MyTransactions";
-import Home from "./components/Home";
+import { ContextProvider } from './core/ContextApi';
+import Dashboard from './layout/Dashboard';
+import Login from './features/auth/Login';
+import Register from './features/auth/Register';
+import Profile from './features/settings/Profile';
+import POS from './features/sales/POS';
+import GeneralSettings from './features/settings/GeneralSettings';
+import MyTransactions from './features/dashboard/MyTransactions';
+import Home from "./features/dashboard/Home";
 import {
   BrowserRouter as Router,
   Routes,
@@ -14,33 +14,33 @@ import {
   Navigate,
 } from "react-router-dom";
 
-import Category from "./subCoponents/Category";
-import AddProduct from "./subCoponents/AddProduct";
-import ProductList from "./subCoponents/ProductList";
-import PurchaseList from "./subCoponents/PurchaseList";
-import AddPurchase from "./subCoponents/AddPurchase";
-import ImportPurchase from "./subCoponents/ImportPurchase";
-import SaleList from "./subCoponents/SaleList";
-import AddSale from "./subCoponents/AddSale";
-import ImportSale from "./subCoponents/ImportSale";
-import Sale from "./subCoponents/Sale";
-import Purchase from "./subCoponents/Purchase";
-import AccountList from "./subCoponents/AccountList";
-import AddAccount from "./subCoponents/AddAccount";
-import MoneyTransfer from "./subCoponents/MoneyTransfer";
-import CustomerList from "./subCoponents/CustomerList";
-import AddCustomer from "./subCoponents/AddCustomer";
-import ProductReport from "./subCoponents/ProductReport";
-import SaleReport from "./subCoponents/SaleReport";
-import PurchaseReport from "./subCoponents/PurchaseReport";
-import PaymentReport from "./subCoponents/PaymentReport";
-import Unit from "./subCoponents/Unit";
-import Brand from "./subCoponents/Brand";
-import Tax from "./subCoponents/Tax";
-import EditProduct from './subCoponents/EditProduct';
-import EditPurchases from "./subCoponents/EditPurchases";
-import EditSale from "./subCoponents/EditSale";
-import EditAccount from "./subCoponents/EditAccount";
+import Category from './features/settings/Category';
+import AddProduct from './features/products/AddProduct';
+import ProductList from './features/products/ProductList';
+import PurchaseList from './features/purchases/PurchaseList';
+import AddPurchase from './features/purchases/Purchase';
+import ImportPurchase from './features/purchases/Purchase';
+import SaleList from './features/sales/SaleList';
+import AddSale from './features/sales/Sale';
+import ImportSale from './features/sales/Sale';
+import Sale from './features/sales/Sale';
+import Purchase from './features/purchases/Purchase';
+import AccountList from './features/accounts/AccountList';
+import AddAccount from './features/accounts/AddAccount';
+import MoneyTransfer from './features/accounts/MoneyTransfer';
+import CustomerList from './features/customers/CustomerList';
+import AddCustomer from './features/customers/AddCustomer';
+import ProductReport from './features/products/ProductReport';
+import SaleReport from './features/sales/SaleReport';
+import PurchaseReport from './features/purchases/PurchaseReport';
+import PaymentReport from './features/accounts/PaymentReport';
+import Unit from './features/settings/Unit';
+import Brand from './features/settings/Brand';
+import Tax from './features/settings/Tax';
+import EditProduct from './features/products/EditProduct';
+import EditPurchases from './features/purchases/EditPurchases';
+import EditSale from './features/sales/Sale';
+import EditAccount from './features/accounts/EditAccount';
 import { ToastContainer } from "react-toastify";
 import { useState } from "react";
 
