@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken')
 
 const ensureAuthenticated = (req,res,next)=>{
-         const auth = req.headers['authorization']
+         console.log('ensureAuthenticated called'); const auth = req.headers['authorization']
          if(!auth){
             return res.status(403)
             .json({msg:'Unauthorized, jwt token required'})

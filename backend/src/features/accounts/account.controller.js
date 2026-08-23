@@ -1,36 +1,42 @@
-const Account = require('./account.model')
+const Account = require('./account.model');
+const asyncHandler = require('../../middlewares/asyncHandler');
 
-async function addAccount(req,res){
-    const newAccount = await Account.create(req.body)
-    return res.json({msg:'account added'})
-}
+const addAccount = asyncHandler(async (req, res) => {
+    const newAccount = await Account.create(req.body);
+    return res.status(201).json({ msg: 'account added', newAccount });
+});
 
-async function showAllAccounts(req,res){
-    const allAccounts = await Account.find({})
-    return res.json(allAccounts)
-}
+const showAllAccounts = asyncHandler(async (req, res) => {
+    const allAccounts = await Account.find({});
+    return res.json(allAccounts);
+});
 
-async function deleteOne(req,res){
-    const id = req.params.id
-    await Account.findByIdAndDelete(id)
-    res.json({msg:'deleted'})
-}
+const deleteOne = asyncHandler(async (req, res) => {
+    const id = req.params.id;
+    await Account.findByIdAndDelete(id);
+    return res.json({ msg: 'deleted' });
+});
 
-async function showOne(req,res){
-    const id =req.params.id
-    const showOneAcc= await Account.findById(id)
-    res.json(showOneAcc)
-}
+const showOne = asyncHandler(async (req, res) => {
+    const id = req.params.id;
+    const showOneAcc = await Account.findById(id);
+    if (!showOneAcc) {
+        res.status(404);
+        throw new Error('Account not found');
+    }
+    return res.json(showOneAcc);
+});
 
-async function editAccount(req,res){
-    const id=req.params.id
-    const editById = await Account.findByIdAndUpdate(id,req.body)
-    res.json({msg:"Account updated"})
-}
-module.exports={
+const editAccount = asyncHandler(async (req, res) => {
+    const id = req.params.id;
+    await Account.findByIdAndUpdate(id, req.body, { new: true });
+    return res.json({ msg: "Account updated" });
+});
+
+module.exports = {
     addAccount,
     showAllAccounts,
     deleteOne,
     showOne,
     editAccount
-}
+};

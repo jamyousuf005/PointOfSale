@@ -1,38 +1,43 @@
-const Sale = require('./sale.model')
+const Sale = require('./sale.model');
+const asyncHandler = require('../../middlewares/asyncHandler');
 
-async function addSale(req,res){
-    const body=req.body;
-   const newSale= await Sale.create(body)
-    return res.json({msg:'added',newSale})
-}
+const addSale = asyncHandler(async (req, res) => {
+    const body = req.body;
+    const newSale = await Sale.create(body);
+    return res.status(201).json({ msg: 'added', newSale });
+});
 
-async function showSales(req,res){
-    const ShowAllSales=await Sale.find({})
-    return res.status(200).json(ShowAllSales)
-}
-async function deleteSale(req,res){
-     const id = req.params.id
-     const deletedSale = await Sale.findByIdAndDelete(id)
-     return res.json({msg:'deleted'})
-}
+const showSales = asyncHandler(async (req, res) => {
+    const ShowAllSales = await Sale.find({});
+    return res.status(200).json(ShowAllSales);
+});
 
-async function showOne(req,res){
+const deleteSale = asyncHandler(async (req, res) => {
     const id = req.params.id;
-    const productWithId = await Sale.findById(id)
-    return res.json(productWithId); 
+    await Sale.findByIdAndDelete(id);
+    return res.json({ msg: 'deleted' });
+});
 
-}
- async function editSale(req,res){
-     const id = req.params.id
-     const editedSale = await Sale.findByIdAndUpdate(id,req.body)
-     return res.json({msg:"updated the sale"})
- }
+const showOne = asyncHandler(async (req, res) => {
+    const id = req.params.id;
+    const productWithId = await Sale.findById(id);
+    if (!productWithId) {
+        res.status(404);
+        throw new Error('Sale not found');
+    }
+    return res.json(productWithId);
+});
 
+const editSale = asyncHandler(async (req, res) => {
+    const id = req.params.id;
+    await Sale.findByIdAndUpdate(id, req.body, { new: true });
+    return res.json({ msg: "updated the sale" });
+});
 
-module.exports={
+module.exports = {
     addSale,
     showSales,
     deleteSale,
     showOne,
     editSale
-}
+};

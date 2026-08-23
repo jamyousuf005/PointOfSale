@@ -3,11 +3,11 @@ const express = require('express')
 const cors = require("cors")
 require('dotenv').config()
 const bodyParser=require('body-parser')
-const productsRouter= require('../features/products/product.model')
-const purchaseRouter=require('../features/purchases/purchase.model')
-const salesRouter = require('../features/sales/sale.model')
-const accountsRouter=require('../features/accounts/account.model')
-const userRouter=require('../features/users/user.model')
+const productsRouter= require('../features/products/product.routes')
+const purchaseRouter=require('../features/purchases/purchase.routes')
+const salesRouter = require('../features/sales/sale.routes')
+const accountsRouter=require('../features/accounts/account.routes')
+const userRouter=require('../features/users/user.routes')
 const { connectMongoDb } = require('./connection');
 const app = express()
 
@@ -26,11 +26,15 @@ app.get('/',(req,res)=>{
     res.send('im running')
 })
 
+const errorHandler = require('../middlewares/errorHandler')
+
 app.use('/auth',userRouter)
 
 app.use('/api/products',productsRouter)
 app.use('/api/purchase',purchaseRouter)
 app.use('/api/sales',salesRouter)
 app.use('/api/accounts',accountsRouter)
+
+app.use(errorHandler)
 
 app.listen(PORT,()=>console.log("server started"))
