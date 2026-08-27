@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Plus, Upload, Search } from 'lucide-react';
+import { ChevronDown, Plus, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
+import TableHeaderControls from '../../components/common/TableHeaderControls';
 import dell from '../../assets/dell.png';
 import hp from '../../assets/hp.png';
 import mac from '../../assets/mac.png';
 import oppo from '../../assets/oppo.png';
 import vivo from '../../assets/vivo.png';
 
-
-// Define the animation variants for the outer container.
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -20,7 +19,6 @@ const containerVariants = {
   }
 };
 
-// Define animation variants for the inner content.
 const uniformVariants = {
   hidden: {
     opacity: 0,
@@ -38,24 +36,34 @@ const uniformVariants = {
   }
 };
 
+const initialBrands = [
+  { id: 1, name: 'Dell', image: dell, hasImage: true },
+  { id: 2, name: 'Club Special', image: null, hasImage: false },
+  { id: 3, name: 'Mac', image: mac, hasImage: true },
+  { id: 4, name: 'HP', image: hp, hasImage: true },
+  { id: 5, name: 'Oppo', image: oppo, hasImage: true },
+  { id: 6, name: 'Vivo', image: vivo, hasImage: true },
+];
 
 const Brand = () => {
+  const [brands, setBrands] = useState(initialBrands);
   const [searchTerm, setSearchTerm] = useState('');
   const [recordsPerPage, setRecordsPerPage] = useState('10');
   const [selectedItems, setSelectedItems] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
 
-  const brandData = [
-    { id: 1, name: 'Dell', image: dell, hasImage: true },
-    { id: 2, name: 'Club Special', image: null, hasImage: false },
-    { id: 3, name: 'Mac', image: mac, hasImage: true },
-    { id: 4, name: 'HP', image: hp, hasImage: true },
-    { id: 5, name: 'Oppo', image: oppo, hasImage: true },
-    { id: 6, name: 'Vivo', image: vivo, hasImage: true },
-  ];
-  
+  const [columns, setColumns] = useState([
+    { key: 'image', label: 'Image', visible: true },
+    { key: 'name', label: 'Brand Name', visible: true },
+  ]);
 
-  const filteredBrands = brandData.filter((item) =>
+  const handleColumnToggle = (columnKey) => {
+    setColumns((prev) =>
+      prev.map((col) => (col.key === columnKey ? { ...col, visible: !col.visible } : col))
+    );
+  };
+
+  const filteredBrands = brands.filter((item) =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -74,84 +82,76 @@ const Brand = () => {
   };
 
   const handleAction = (action, rowId) => {
+    if (action === 'Delete') {
+      if (window.confirm("Are you sure you want to delete this brand?")) {
+        setBrands((prev) => prev.filter((b) => b.id !== rowId));
+      }
+    }
     setOpenActionId(null);
   };
 
+  const handleBulkDelete = () => {
+    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} brand(s)?`)) {
+      setBrands((prev) => prev.filter((b) => !selectedItems.includes(b.id)));
+      setSelectedItems([]);
+    }
+  };
+
+  const isColVisible = (key) => {
+    const col = columns.find((c) => c.key === key);
+    return col ? col.visible !== false : true;
+  };
+
   return (
-    // Apply the container variants to the outermost div
     <motion.div
       className="p-6"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      {/* Apply the uniform variants to the main content div */}
       <motion.div
         className="bg-white rounded-lg shadow-sm p-6"
         variants={uniformVariants}
       >
-        {/* Top Buttons */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Add Brand
-          </button>
-          <button className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2">
-            <Upload className="w-4 h-4" />
-            Import Brand
-          </button>
-        </div>
-
-        {/* Filters and Actions */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
-          <div className="flex items-center gap-2">
-            <select
-              className="border border-purple-300 text-purple-700 rounded-md px-2 py-1 text-sm"
-              value={recordsPerPage}
-              onChange={(e) => setRecordsPerPage(e.target.value)}
-            >
-              <option>10</option>
-              <option>25</option>
-              <option>50</option>
-            </select>
-            <span className="text-gray-600 text-sm">records per page</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-700">Search</label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search brands..."
-              className="border rounded-md px-2 py-1 text-sm outline-none focus:ring-2 ring-purple-300"
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button className="bg-rose-400 hover:bg-rose-500 text-white px-3 py-1 rounded-md text-sm">PDF</button>
-            <button className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-md text-sm">CSV</button>
-            <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm">Print</button>
-            <button className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">Delete</button>
-            <button className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-md text-sm">Column Visibility</button>
-          </div>
-        </div>
+        <TableHeaderControls
+          title="Brand List"
+          addLabel="+ Add Brand"
+          onAdd={() => alert('Add Brand clicked')}
+          extraButtons={[
+            {
+              label: '📁 Import Brand',
+              onClick: () => alert('Import Brand clicked'),
+              className: 'bg-purple-500 hover:bg-purple-600 text-white font-medium px-4 py-2 rounded-md text-sm flex items-center gap-1 transition-colors shadow-sm'
+            }
+          ]}
+          recordsPerPage={recordsPerPage}
+          onRecordsPerPageChange={setRecordsPerPage}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search brands..."
+          data={filteredBrands}
+          exportFilename="Brands_List"
+          columns={columns}
+          onColumnToggle={handleColumnToggle}
+          selectedCount={selectedItems.length}
+          onBulkDelete={handleBulkDelete}
+        />
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto mt-6">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedItems.length === filteredBrands.length}
+                    checked={selectedItems.length === filteredBrands.length && filteredBrands.length > 0}
                     onChange={toggleAllRows}
                     className="w-4 h-4 text-purple-600 border-gray-300 rounded"
                   />
                 </th>
-                <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">Image</th>
-                <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">Brand Name</th>
+                {isColVisible('image') && <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">Image</th>}
+                {isColVisible('name') && <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">Brand Name</th>}
                 <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">Action</th>
               </tr>
             </thead>
@@ -166,14 +166,16 @@ const Brand = () => {
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded"
                     />
                   </td>
-                  <td className="px-3 py-3">
-                    {item.hasImage ? (
-                      <img src={item.image} alt={item.name} className="w-16 h-16 object-contain" />
-                    ) : (
-                      <span className="text-xs text-gray-500">No Image</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-gray-700">{item.name}</td>
+                  {isColVisible('image') && (
+                    <td className="px-3 py-3">
+                      {item.hasImage ? (
+                        <img src={item.image} alt={item.name} className="w-12 h-12 object-contain" />
+                      ) : (
+                        <span className="text-xs text-gray-500">No Image</span>
+                      )}
+                    </td>
+                  )}
+                  {isColVisible('name') && <td className="px-3 py-3 text-sm text-gray-700">{item.name}</td>}
                   <td className="px-3 py-3 relative">
                     <button
                       onClick={() =>

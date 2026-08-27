@@ -3,6 +3,7 @@ import { ChevronDown, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ContextApi } from '../../core/ContextApi';
 import { motion } from 'framer-motion';
+import TableHeaderControls from '../../components/common/TableHeaderControls';
 
 // Defining the variants for the animation
 const containerVariants = {
@@ -80,6 +81,14 @@ const AccountList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
+  
+  const [columns, setColumns] = useState([
+    { key: 'accountNumber', label: 'Account No', visible: true },
+    { key: 'name', label: 'Name', visible: true },
+    { key: 'initialBalance', label: 'Initial Balance', visible: true },
+    { key: 'isDefault', label: 'Default', visible: true },
+    { key: 'note', label: 'Note', visible: true },
+  ]);
     
   const {accounts,setAccounts}=useContext(ContextApi)
   const navigate = useNavigate();
@@ -88,8 +97,14 @@ const AccountList = () => {
     setAccounts((prevAccounts) =>
       prevAccounts.map((account) => ({
         ...account,
-        isDefault: account.id === id ? !account.isDefault : false,
+        isDefault: account._id === id ? !account.isDefault : false,
       }))
+    );
+  };
+
+  const handleColumnToggle = (columnKey) => {
+    setColumns((prev) =>
+      prev.map((col) => (col.key === columnKey ? { ...col, visible: !col.visible } : col))
     );
   };
 
@@ -99,26 +114,27 @@ const AccountList = () => {
     );
   };
 
-  const filteredAccounts = accounts.filter(
+  const filteredAccounts = (accounts || []).filter(
     (account) =>
-      account.accountNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      account.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (account.accountNumber && account.accountNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (account.name && account.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (account.note && account.note.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const toggleAllRows = () => {
     setSelectedRows((prev) =>
-      prev.length === filteredAccounts.length ? [] : filteredAccounts.map((a) => a.id)
+      prev.length === filteredAccounts.length ? [] : filteredAccounts.map((a) => a._id)
     );
   };
 
-  const totalInitialBalance = accounts.reduce((sum, row) => sum + row.initialBalance, 0);
+  const totalInitialBalance = filteredAccounts.reduce((sum, row) => sum + (Number(row.initialBalance) || 0), 0);
 
   const handleEdit = (id) => {
     navigate(`/account/edit/${id}`);
   };
 
-  const handleDelete = async(id) => {
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this account?")) return;
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts/${id}`, {
         method: 'DELETE', 
@@ -130,16 +146,37 @@ const AccountList = () => {
 
       if (res.ok) {
         setAccounts((prev) => prev.filter(p => p._id !== id));
-        alert('account deleted');
       }
     } catch(err) {
+      console.error(err);
     }
-    
     setOpenActionId(null);
-  }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} selected account(s)?`)) return;
+    for (const id of selectedRows) {
+      try {
+        await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setAccounts((prev) => prev.filter((a) => !selectedRows.includes(a._id)));
+    setSelectedRows([]);
+  };
+
+  const isColVisible = (key) => {
+    const col = columns.find((c) => c.key === key);
+    return col ? col.visible !== false : true;
+  };
 
   return (
-    // Outer layout animated with Framer Motion
     <motion.div
       className="p-6"
       variants={containerVariants}
@@ -150,51 +187,23 @@ const AccountList = () => {
         className="w-full bg-white rounded-lg shadow-sm p-6"
         variants={uniformVariants}
       >
-        {/* Header Controls */}
-        <div className="sm:p-4">
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button
-              onClick={() => navigate('/account/add')}
-              className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-4 py-2 rounded-md text-sm sm:text-base"
-            >
-              + Add Account
-            </button>
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-            <div className="flex items-center gap-2">
-              <select
-                className="border border-purple-300 text-purple-700 rounded-md px-2 py-1 text-sm"
-                value={recordsPerPage}
-                onChange={(e) => setRecordsPerPage(e.target.value)}
-              >
-                <option>10</option>
-                <option>25</option>
-                <option>50</option>
-              </select>
-              <span className="text-gray-600 text-sm">records per page</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Search</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border rounded-md px-2 py-1 text-sm outline-none focus:ring-2 ring-purple-300"
-                placeholder="Search accounts..."
-              />
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button className="bg-rose-400 hover:bg-rose-500 text-white px-3 py-1 rounded-md text-sm">PDF</button>
-              <button className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-md text-sm">CSV</button>
-              <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm">Print</button>
-              <button className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">Delete</button>
-              <button className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-md text-sm">Column Visibility</button>
-            </div>
-          </div>
-        </div>
+        {/* Reusable Header Controls */}
+        <TableHeaderControls
+          title="Account List"
+          addLabel="+ Add Account"
+          onAdd={() => navigate('/account/add')}
+          recordsPerPage={recordsPerPage}
+          onRecordsPerPageChange={setRecordsPerPage}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search accounts..."
+          data={filteredAccounts}
+          exportFilename="Accounts_List"
+          columns={columns}
+          onColumnToggle={handleColumnToggle}
+          selectedCount={selectedRows.length}
+          onBulkDelete={handleBulkDelete}
+        />
 
         {/* Table Section */}
         <div className="bg-white shadow-md overflow-hidden">
@@ -210,11 +219,11 @@ const AccountList = () => {
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
                   </th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Account No</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Name</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Initial Balance</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Default</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Note</th>
+                  {isColVisible('accountNumber') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Account No</th>}
+                  {isColVisible('name') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Name</th>}
+                  {isColVisible('initialBalance') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Initial Balance</th>}
+                  {isColVisible('isDefault') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Default</th>}
+                  {isColVisible('note') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Note</th>}
                   <th className="px-3 py-4 font-semibold text-gray-700 text-left">Action</th>
                 </tr>
               </thead>
@@ -224,20 +233,23 @@ const AccountList = () => {
                     <td className="px-3 py-4">
                       <input
                         type="checkbox"
+                        checked={selectedRows.includes(account._id)}
                         onChange={() => toggleRowSelection(account._id)}
                         className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                       />
                     </td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-800">{account.accountNumber}</td>
-                    <td className="px-3 py-4 text-sm text-gray-700">{account.name}</td>
-                    <td className="px-3 py-4 text-sm text-gray-700">{account.initialBalance}</td>
-                    <td className="px-3 py-4">
-                      <CustomToggleSwitch
-                        isChecked={account.isDefault}
-                        onToggle={() => handleDefaultToggle(account._id)}
-                      />
-                    </td>
-                    <td className="px-3 py-4 text-sm text-gray-700">{account.note || 'N/A'}</td>
+                    {isColVisible('accountNumber') && <td className="px-3 py-4 text-sm font-medium text-gray-800">{account.accountNumber}</td>}
+                    {isColVisible('name') && <td className="px-3 py-4 text-sm text-gray-700">{account.name}</td>}
+                    {isColVisible('initialBalance') && <td className="px-3 py-4 text-sm text-gray-700">{account.initialBalance}</td>}
+                    {isColVisible('isDefault') && (
+                      <td className="px-3 py-4">
+                        <CustomToggleSwitch
+                          isChecked={account.isDefault}
+                          onToggle={() => handleDefaultToggle(account._id)}
+                        />
+                      </td>
+                    )}
+                    {isColVisible('note') && <td className="px-3 py-4 text-sm text-gray-700">{account.note || 'N/A'}</td>}
                     <td className="px-3 py-4 relative">
                       <ActionMenu
                         isOpen={openActionId === account._id}

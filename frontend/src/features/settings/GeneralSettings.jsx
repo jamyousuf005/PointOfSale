@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { CustomSelect } from '../../components/common/CustomSelect';
 
 // Define the animation variants for the outer container.
 const containerVariants = {
@@ -32,7 +32,6 @@ const uniformVariants = {
   }
 };
 
-
 const GeneralSettings = () => {
   const [formData, setFormData] = useState({
     systemTitle: 'Excel Communication',
@@ -51,6 +50,11 @@ const GeneralSettings = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleNativeInputChange = (e) => {
+    const { name, value } = e.target;
+    handleInputChange(name, value);
   };
 
   const handleFileChange = (e) => {
@@ -87,7 +91,7 @@ const GeneralSettings = () => {
   return (
     // Apply the container variants to the outermost div
     <motion.div 
-      className="p-6"
+      className="p-7"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -97,16 +101,16 @@ const GeneralSettings = () => {
         className="bg-white rounded-lg shadow-sm p-6"
         variants={uniformVariants}
       >
-        <h1 className="text-xl font-medium text-gray-900 mb-6">General Setting</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-6">General Setting</h1>
         
-        <p className="text-sm text-blue-500 italic mb-6">
-          The field labels marked with * are required input fields.
+        <p className="text-sm text-gray-500 italic mb-6">
+          The field labels marked with <span className="text-red-500">*</span> are required input fields.
         </p>
 
-        <div onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* System Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -114,8 +118,9 @@ const GeneralSettings = () => {
                 </label>
                 <input
                   type="text"
+                  name="systemTitle"
                   value={formData.systemTitle}
-                  onChange={(e) => handleInputChange('systemTitle', e.target.value)}
+                  onChange={handleNativeInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -126,20 +131,13 @@ const GeneralSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Currency <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <select
-                    value={formData.currency}
-                    onChange={(e) => handleInputChange('currency', e.target.value)}
-                    className="w-full appearance-none px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
-                    required
-                  >
-                    <option value="">Select Currency</option>
-                    <option value="Pakistani Rupee">Pakistani Rupee</option>
-                    <option value="US Dollar">US Dollar</option>
-                    <option value="Euro">Euro</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                </div>
+                <CustomSelect
+                  name="currency"
+                  value={formData.currency}
+                  onChange={handleInputChange}
+                  options={['Pakistani Rupee', 'US Dollar', 'Euro']}
+                  placeholder="Select Currency"
+                />
               </div>
 
               {/* Time Zone */}
@@ -147,19 +145,13 @@ const GeneralSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Time Zone
                 </label>
-                <div className="relative">
-                  <select
-                    value={formData.timeZone}
-                    onChange={(e) => handleInputChange('timeZone', e.target.value)}
-                    className="w-full appearance-none px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 text-gray-500"
-                  >
-                    <option value="">Select TimeZone...</option>
-                    <option value="Asia/Karachi">Asia/Karachi</option>
-                    <option value="UTC">UTC</option>
-                    <option value="America/New_York">America/New_York</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                </div>
+                <CustomSelect
+                  name="timeZone"
+                  value={formData.timeZone}
+                  onChange={handleInputChange}
+                  options={['Asia/Karachi', 'UTC', 'America/New_York']}
+                  placeholder="Select TimeZone..."
+                />
               </div>
 
               {/* Invoice Format */}
@@ -167,20 +159,13 @@ const GeneralSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Invoice Format <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <select
-                    value={formData.invoiceFormat}
-                    onChange={(e) => handleInputChange('invoiceFormat', e.target.value)}
-                    className="w-full appearance-none px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
-                    required
-                  >
-                    <option value="">Select Format</option>
-                    <option value="Standard">Standard</option>
-                    <option value="Detailed">Detailed</option>
-                    <option value="Simple">Simple</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                </div>
+                <CustomSelect
+                  name="invoiceFormat"
+                  value={formData.invoiceFormat}
+                  onChange={handleInputChange}
+                  options={['Standard', 'Detailed', 'Simple']}
+                  placeholder="Select Format"
+                />
               </div>
 
               {/* Developed By */}
@@ -190,15 +175,16 @@ const GeneralSettings = () => {
                 </label>
                 <input
                   type="text"
+                  name="developedBy"
                   value={formData.developedBy}
-                  onChange={(e) => handleInputChange('developedBy', e.target.value)}
+                  onChange={handleNativeInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
 
             {/* Right Column */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* System Logo */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -226,8 +212,8 @@ const GeneralSettings = () => {
                       name="currencyPosition"
                       value="Prefix"
                       checked={formData.currencyPosition === 'Prefix'}
-                      onChange={(e) => handleInputChange('currencyPosition', e.target.value)}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 focus:ring-2"
+                      onChange={handleNativeInputChange}
+                      className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 focus:ring-purple-500 focus:ring-2"
                     />
                     <span className="ml-2 text-sm text-gray-700">Prefix</span>
                   </label>
@@ -237,8 +223,8 @@ const GeneralSettings = () => {
                       name="currencyPosition"
                       value="Suffix"
                       checked={formData.currencyPosition === 'Suffix'}
-                      onChange={(e) => handleInputChange('currencyPosition', e.target.value)}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 focus:ring-2"
+                      onChange={handleNativeInputChange}
+                      className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 focus:ring-purple-500 focus:ring-2"
                     />
                     <span className="ml-2 text-sm text-gray-700">Suffix</span>
                   </label>
@@ -250,20 +236,13 @@ const GeneralSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Staff Access <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <select
-                    value={formData.staffAccess}
-                    onChange={(e) => handleInputChange('staffAccess', e.target.value)}
-                    className="w-full appearance-none px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
-                    required
-                  >
-                    <option value="">Select Access Level</option>
-                    <option value="All Records">All Records</option>
-                    <option value="Own Records">Own Records</option>
-                    <option value="Limited Access">Limited Access</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                </div>
+                <CustomSelect
+                  name="staffAccess"
+                  value={formData.staffAccess}
+                  onChange={handleInputChange}
+                  options={['All Records', 'Own Records', 'Limited Access']}
+                  placeholder="Select Access Level"
+                />
               </div>
 
               {/* Date Format */}
@@ -271,34 +250,29 @@ const GeneralSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Date Format <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <select
-                    value={formData.dateFormat}
-                    onChange={(e) => handleInputChange('dateFormat', e.target.value)}
-                    className="w-full appearance-none px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 text-gray-500"
-                    required
-                  >
-                    <option value="">dd-mm-yyy</option>
-                    <option value="dd-mm-yyyy">dd-mm-yyyy</option>
-                    <option value="mm-dd-yyyy">mm-dd-yyyy</option>
-                    <option value="yyyy-mm-dd">yyyy-mm-dd</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                </div>
+                <CustomSelect
+                  name="dateFormat"
+                  value={formData.dateFormat}
+                  onChange={handleInputChange}
+                  options={['dd-mm-yyyy', 'mm-dd-yyyy', 'yyyy-mm-dd']}
+                  placeholder="dd-mm-yyyy"
+                />
               </div>
             </div>
           </div>
 
           {/* Submit Button */}
-          <div className="mt-6">
-            <button
-              onClick={handleSubmit}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-md text-sm font-medium transition-colors"
+          <motion.div className="flex justify-start mt-6" variants={uniformVariants}>
+            <motion.button
+              type="submit"
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition duration-200"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               Submit
-            </button>
-          </div>
-        </div>
+            </motion.button>
+          </motion.div>
+        </form>
       </motion.div>
     </motion.div>
   );

@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ContextApi } from '../../core/ContextApi';
 import { motion } from 'framer-motion';
+import TableHeaderControls from '../../components/common/TableHeaderControls';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -38,7 +39,20 @@ const SaleList = () => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
 
-  const {products,sales,setSales}=useContext(ContextApi)
+  const [columns, setColumns] = useState([
+    { key: 'createdAt', label: 'Date', visible: true },
+    { key: '_id', label: 'Reference', visible: true },
+    { key: 'biller', label: 'Biller', visible: true },
+    { key: 'customer', label: 'Customer', visible: true },
+    { key: 'saleStatus', label: 'Sale Status', visible: true },
+    { key: 'paymentStatus', label: 'Payment Status', visible: true },
+    { key: 'grandTotal', label: 'Grand Total', visible: true },
+    { key: 'paid', label: 'Paid', visible: true },
+    { key: 'due', label: 'Due', visible: true },
+  ]);
+
+  const { products, sales, setSales } = useContext(ContextApi);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sales`, {
@@ -47,13 +61,20 @@ const SaleList = () => {
       }
     })
     .then((res) => res.json())
-    .then((data) => setSales(data))
+    .then((data) => setSales(data || []))
     .catch((err) => console.error(err));
   }, [setSales]);
 
-  const filteredSales = sales.filter(sale =>
-    sale._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sale.customer.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleColumnToggle = (columnKey) => {
+    setColumns((prev) =>
+      prev.map((col) => (col.key === columnKey ? { ...col, visible: !col.visible } : col))
+    );
+  };
+
+  const filteredSales = (sales || []).filter(sale =>
+    (sale._id && sale._id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (sale.customer && sale.customer.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (sale.biller && sale.biller.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const toggleRowSelection = (id) => {
@@ -64,19 +85,19 @@ const SaleList = () => {
 
   const toggleAllRows = () => {
     setSelectedRows(prev =>
-      prev.length === filteredSales.length ? [] : filteredSales.map(s => s.id)
+      prev.length === filteredSales.length ? [] : filteredSales.map(s => s._id)
     );
   };
 
-  const handleEdit = (action,rowId)=>{
-    if(action==='Edit'){
-      navigate(`/sale/edit/${rowId}`)
+  const handleEdit = (action, rowId) => {
+    if (action === 'Edit') {
+      navigate(`/sale/edit/${rowId}`);
     }
-  }
+  };
 
   const handleDelete = async (action, rowId) => {
     if (action === 'Delete') {
-      const confirmDelete = window.confirm("Are you sure you want to delete this purchase")
+      const confirmDelete = window.confirm("Are you sure you want to delete this sale?");
       if (!confirmDelete) return;
     }
     try {
@@ -86,18 +107,37 @@ const SaleList = () => {
           'Content-Type':'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
-      })
+      });
 
       if (res.ok) {
-        setSales((prev) => prev.filter(p => p._id !== rowId))
-      } else {
+        setSales((prev) => prev.filter(p => p._id !== rowId));
       }
     } catch (err) {
+      console.error(err);
     }
-    setOpenActionId(null)
+    setOpenActionId(null);
   };
 
-  const navigate = useNavigate()
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} selected sale(s)?`)) return;
+    for (const id of selectedRows) {
+      try {
+        await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sales/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setSales((prev) => prev.filter(s => !selectedRows.includes(s._id)));
+    setSelectedRows([]);
+  };
+
+  const isColVisible = (key) => {
+    const col = columns.find((c) => c.key === key);
+    return col ? col.visible !== false : true;
+  };
 
   return (
     <motion.div 
@@ -110,52 +150,29 @@ const SaleList = () => {
         className="w-full bg-white rounded-lg shadow-sm p-6"
         variants={uniformVariants}
       >
-        {/* Header Controls */}
-        <div className="sm:p-4">
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button 
-              onClick={()=>navigate('/sale/add')}
-              className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base">
-              + Add Sale
-            </button>
-            <button className="bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1">
-              📁 Import Sale
-            </button>
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-            <div className="flex items-center gap-2">
-              <select
-                className="border border-purple-300 text-purple-700 rounded-md px-2 py-1 text-sm"
-                value={recordsPerPage}
-                onChange={(e) => setRecordsPerPage(e.target.value)}
-              >
-                <option>10</option>
-                <option>25</option>
-                <option>50</option>
-              </select>
-              <span className="text-gray-600 text-sm">records per page</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border rounded-md px-2 py-1 text-sm outline-none focus:ring-2 ring-purple-300"
-                placeholder="Search sales..."
-              />
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button className="bg-rose-400 hover:bg-rose-500 text-white px-2 sm:px-3 py-1 rounded-md text-sm">PDF</button>
-              <button className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 sm:px-3 py-1 rounded-md text-sm">CSV</button>
-              <button className="bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Print</button>
-              <button className="bg-red-500 hover:bg-red-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Delete</button>
-              <button className="bg-purple-500 hover:bg-purple-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Column Visibility</button>
-            </div>
-          </div>
-        </div>
+        <TableHeaderControls
+          title="Sale List"
+          addLabel="+ Add Sale"
+          onAdd={() => navigate('/sale/add')}
+          extraButtons={[
+            {
+              label: '📁 Import Sale',
+              onClick: () => alert('Import Sale clicked'),
+              className: 'bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1 transition-colors shadow-sm'
+            }
+          ]}
+          recordsPerPage={recordsPerPage}
+          onRecordsPerPageChange={setRecordsPerPage}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search sales..."
+          data={filteredSales}
+          exportFilename="Sales_List"
+          columns={columns}
+          onColumnToggle={handleColumnToggle}
+          selectedCount={selectedRows.length}
+          onBulkDelete={handleBulkDelete}
+        />
 
         {/* Table Section */}
         <div className="bg-white shadow-md overflow-hidden">
@@ -171,46 +188,52 @@ const SaleList = () => {
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
                   </th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Date</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Reference</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Biller</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Customer</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Sale Status</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Payment Status</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Grand Total</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Paid</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Due</th>
+                  {isColVisible('createdAt') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Date</th>}
+                  {isColVisible('_id') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Reference</th>}
+                  {isColVisible('biller') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Biller</th>}
+                  {isColVisible('customer') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Customer</th>}
+                  {isColVisible('saleStatus') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Sale Status</th>}
+                  {isColVisible('paymentStatus') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Payment Status</th>}
+                  {isColVisible('grandTotal') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Grand Total</th>}
+                  {isColVisible('paid') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Paid</th>}
+                  {isColVisible('due') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Due</th>}
                   <th className="px-3 py-4 font-semibold text-gray-700 text-left">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredSales.map((sale) => (
-                  <tr key={sale._id} className="hover:bg-gray-50">
-                    <td className="px-3 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedRows.includes(sale._id)}
-                        onChange={() => toggleRowSelection(sale._id)}
-                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                      />
-                    </td>
-                    <td className="px-3 py-4 text-sm">{sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : 'N/A'}</td>
-                    <td className="px-3 py-4 text-sm">{sale._id}</td>
-                    <td className="px-3 py-4 text-sm">{sale.biller}</td>
-                    <td className="px-3 py-4 text-sm">{sale.customer}</td>
-                    <td className="px-3 py-4">
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                        {sale.saleStatus}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4">
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                        {sale.paymentStatus}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900">{sale.products.reduce((acc, product) => acc + product.subTotal, 0)}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">{sale.paid}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">{sale.due}</td>
+                {filteredSales.map((sale) => {
+                  const grandTotal = (sale.products || []).reduce((acc, product) => acc + (Number(product.subTotal) || 0), 0);
+                  return (
+                    <tr key={sale._id} className="hover:bg-gray-50">
+                      <td className="px-3 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedRows.includes(sale._id)}
+                          onChange={() => toggleRowSelection(sale._id)}
+                          className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                        />
+                      </td>
+                      {isColVisible('createdAt') && <td className="px-3 py-4 text-sm">{sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : 'N/A'}</td>}
+                      {isColVisible('_id') && <td className="px-3 py-4 text-sm">{sale._id}</td>}
+                      {isColVisible('biller') && <td className="px-3 py-4 text-sm">{sale.biller}</td>}
+                      {isColVisible('customer') && <td className="px-3 py-4 text-sm">{sale.customer}</td>}
+                      {isColVisible('saleStatus') && (
+                        <td className="px-3 py-4">
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            {sale.saleStatus}
+                          </span>
+                        </td>
+                      )}
+                      {isColVisible('paymentStatus') && (
+                        <td className="px-3 py-4">
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            {sale.paymentStatus}
+                          </span>
+                        </td>
+                      )}
+                      {isColVisible('grandTotal') && <td className="px-3 py-4 text-sm font-medium text-gray-900">${grandTotal}</td>}
+                      {isColVisible('paid') && <td className="px-3 py-4 text-sm text-gray-600">${sale.paid}</td>}
+                      {isColVisible('due') && <td className="px-3 py-4 text-sm text-gray-600">${sale.due}</td>}
                     <td className="px-3 py-4 relative">
                       <button
                         onClick={() => setOpenActionId(prev => (prev === sale._id ? null : sale._id))}
@@ -236,8 +259,9 @@ const SaleList = () => {
                       )}
                     </td>
                   </tr>
-                ))}
-              </tbody>
+                );
+              })}
+            </tbody>
             </table>
           </div>
 

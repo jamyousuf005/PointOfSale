@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ContextApi } from '../../core/ContextApi';
 import { motion } from 'framer-motion';
+import TableHeaderControls from '../../components/common/TableHeaderControls';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -37,7 +38,19 @@ const ProductList = () => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null); 
   
-  const {products,setProducts}=useContext(ContextApi)
+  const [columns, setColumns] = useState([
+    { key: 'image', label: 'Image', visible: true },
+    { key: 'productName', label: 'Name', visible: true },
+    { key: 'productCode', label: 'Code', visible: true },
+    { key: 'brand', label: 'Brand', visible: true },
+    { key: 'category', label: 'Category', visible: true },
+    { key: 'alertQuantity', label: 'Quantity', visible: true },
+    { key: 'productUnit', label: 'Unit', visible: true },
+    { key: 'productPrice', label: 'Price', visible: true },
+  ]);
+
+  const {products, setProducts} = useContext(ContextApi);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products`, {
@@ -50,9 +63,13 @@ const ProductList = () => {
     .catch((err) => console.error('Error fetching products:', err));
   }, [setProducts]);
 
-  const navigate = useNavigate()
+  const handleColumnToggle = (columnKey) => {
+    setColumns((prev) =>
+      prev.map((col) => (col.key === columnKey ? { ...col, visible: !col.visible } : col))
+    );
+  };
 
-  const filteredProducts = products.filter(product =>
+  const filteredProducts = (Array.isArray(products) ? products : []).filter(product =>
     (product?.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product?.productCode?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
@@ -77,7 +94,7 @@ const ProductList = () => {
 
   const handleDelete = async (action, rowId) => {
     if (action === 'Delete') {
-      const confirmDelete = window.confirm("Are you sure you want to delete this product");
+      const confirmDelete = window.confirm("Are you sure you want to delete this product?");
       if (!confirmDelete) return;
     }
 
@@ -93,8 +110,6 @@ const ProductList = () => {
         setProducts((prev) => prev.filter(p => p._id !== rowId));
       } else {
         console.error('Failed to delete product:', res.status, res.statusText);
-        const errorData = await res.json();
-        console.error("Server error message:", errorData.msg);
       }
     } catch (err) {
       console.error("Network or other error:", err);
@@ -102,6 +117,26 @@ const ProductList = () => {
     setOpenActionId(null);
   };
 
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} selected product(s)?`)) return;
+    for (const id of selectedRows) {
+      try {
+        await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setProducts((prev) => prev.filter(p => !selectedRows.includes(p._id)));
+    setSelectedRows([]);
+  };
+
+  const isColVisible = (key) => {
+    const col = columns.find((c) => c.key === key);
+    return col ? col.visible !== false : true;
+  };
 
   return (
     <motion.div
@@ -114,51 +149,29 @@ const ProductList = () => {
         className="w-full bg-white rounded-lg shadow-sm p-6"
         variants={uniformVariants}
       >
-        <motion.div className="sm:p-4" variants={uniformVariants}>
-          {/* Top Buttons */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button onClick={() => navigate('/product/add')} className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base">
-              + Add Product
-            </button>
-            <button className="bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1">
-              📁 Import Product
-            </button>
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-            <div className="flex items-center gap-2">
-              <select
-                className="border border-purple-300 text-purple-700 rounded-md px-2 py-1 text-sm"
-                value={recordsPerPage}
-                onChange={(e) => setRecordsPerPage(e.target.value)}
-              >
-                <option>10</option>
-                <option>25</option>
-                <option>50</option>
-              </select>
-              <span className="text-gray-600 text-sm">records per page</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Search</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border rounded-md px-2 py-1 text-sm outline-none focus:ring-2 ring-purple-300"
-                placeholder="Search products..."
-              />
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button className="bg-rose-400 hover:bg-rose-500 text-white px-2 sm:px-3 py-1 rounded-md text-sm">PDF</button>
-              <button className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 sm:px-3 py-1 rounded-md text-sm">CSV</button>
-              <button className="bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Print</button>
-              <button className="bg-red-500 hover:bg-red-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Delete</button>
-              <button className="bg-purple-500 hover:bg-purple-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Column Visibility</button>
-            </div>
-          </div>
-        </motion.div>
+        <TableHeaderControls
+          title="Product List"
+          addLabel="+ Add Product"
+          onAdd={() => navigate('/product/add')}
+          extraButtons={[
+            {
+              label: '📁 Import Product',
+              onClick: () => alert('Import feature clicked'),
+              className: 'bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1 transition-colors'
+            }
+          ]}
+          recordsPerPage={recordsPerPage}
+          onRecordsPerPageChange={setRecordsPerPage}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search products..."
+          data={filteredProducts}
+          exportFilename="Products_List"
+          columns={columns}
+          onColumnToggle={handleColumnToggle}
+          selectedCount={selectedRows.length}
+          onBulkDelete={handleBulkDelete}
+        />
 
         <div className="bg-white shadow-md overflow-hidden mt-6">
           <div className="overflow-x-auto">
@@ -173,14 +186,14 @@ const ProductList = () => {
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
                   </th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Image</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Name</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Code</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Brand</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Category</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Quantity</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Unit</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Price</th>
+                  {isColVisible('image') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Image</th>}
+                  {isColVisible('productName') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Name</th>}
+                  {isColVisible('productCode') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Code</th>}
+                  {isColVisible('brand') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Brand</th>}
+                  {isColVisible('category') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Category</th>}
+                  {isColVisible('alertQuantity') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Quantity</th>}
+                  {isColVisible('productUnit') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Unit</th>}
+                  {isColVisible('productPrice') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Price</th>}
                   <th className="px-3 py-4 text-left font-semibold text-gray-700">Action</th>
                 </tr>
               </thead>
@@ -195,26 +208,42 @@ const ProductList = () => {
                         className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                       />
                     </td>
-                    <td className="px-3 py-4">
-                      {/* <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded"
-                    /> */}
-                    </td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900">{product.productName}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">{product.productCode}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">{product.brand}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">{product.category}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${product.alertQuantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {product.alertQuantity}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 text-sm text-gray-600">{product.productUnit}</td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900">
-                      ${parseFloat(product.productPrice).toLocaleString()}
-                    </td>
+                    {isColVisible('image') && (
+                      <td className="px-3 py-4">
+                        {product.image ? (
+                          <img
+                            src={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001'}/uploads/${product.image}`}
+                            alt={product.productName}
+                            className="w-12 h-12 object-cover rounded-md border shadow-sm"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-100 rounded-md border flex items-center justify-center text-xs text-gray-400 font-medium">
+                            No Img
+                          </div>
+                        )}
+                      </td>
+                    )}
+                    {isColVisible('productName') && <td className="px-3 py-4 text-sm font-medium text-gray-900">{product.productName}</td>}
+                    {isColVisible('productCode') && <td className="px-3 py-4 text-sm text-gray-600">{product.productCode}</td>}
+                    {isColVisible('brand') && <td className="px-3 py-4 text-sm text-gray-600">{product.brand}</td>}
+                    {isColVisible('category') && <td className="px-3 py-4 text-sm text-gray-600">{product.category}</td>}
+                    {isColVisible('alertQuantity') && (
+                      <td className="px-3 py-4 text-sm text-gray-600">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${product.alertQuantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {product.alertQuantity}
+                        </span>
+                      </td>
+                    )}
+                    {isColVisible('productUnit') && <td className="px-3 py-4 text-sm text-gray-600">{product.productUnit}</td>}
+                    {isColVisible('productPrice') && (
+                      <td className="px-3 py-4 text-sm font-medium text-gray-900">
+                        ${parseFloat(product.productPrice || 0).toLocaleString()}
+                      </td>
+                    )}
                     <td className="px-3 py-4 relative">
                       <button
                         onClick={() => setOpenActionId(prev => (prev === product._id ? null : product._id))}

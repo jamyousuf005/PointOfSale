@@ -19,6 +19,16 @@ const addSale = new mongoose.Schema({
    paymentStatus:{
      type:String
    },
+   paymentMethod: {
+       type: String
+   },
+   accountId: {
+       type: mongoose.Schema.Types.ObjectId,
+       ref: 'Account'
+   },
+   totalAmount: {
+       type: Number
+   },
     products: [{
         productName: String,
         productCode: String,

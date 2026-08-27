@@ -46,6 +46,10 @@ const addProduct = new mongoose.Schema({
     alertQuantity: {
         type: Number,
     },
+    currentStock: {
+        type: Number,
+        default: 0
+    },
     productTax: {
         type: String,
         required: true,
@@ -55,6 +59,10 @@ const addProduct = new mongoose.Schema({
     },
     description: {
         type: String
+    },
+    image: {
+        type: String,
+        default: ""
     },
     excelCommunication: { type: Number },
     hasVariant: { type: String },

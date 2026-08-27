@@ -7,14 +7,19 @@ const{
      showOneProduct
     } = require('./product.controller')
 const ensureAuthenticated = require('../../middlewares/auth')
+const upload = require('../../middlewares/upload')
 
 const router = express.Router()
 
 router.route("/")
   .all(ensureAuthenticated) 
   .get(showProducts)
-  .post(addProducts);
+  .post(upload.single('image'), addProducts);
   
-router.route('/:id').all(ensureAuthenticated).delete(deleteProduct).put(editProduct).get(showOneProduct)
+router.route('/:id')
+  .all(ensureAuthenticated)
+  .delete(deleteProduct)
+  .put(upload.single('image'), editProduct)
+  .get(showOneProduct)
 
 module.exports=router

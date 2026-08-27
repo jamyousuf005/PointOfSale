@@ -8,7 +8,10 @@ const purchaseRouter=require('../features/purchases/purchase.routes')
 const salesRouter = require('../features/sales/sale.routes')
 const accountsRouter=require('../features/accounts/account.routes')
 const userRouter=require('../features/users/user.routes')
+const returnRouter=require('../features/returns/return.routes')
+const reportRouter=require('../features/reports/report.routes')
 const { connectMongoDb } = require('./connection');
+const path = require('path')
 const app = express()
 
 const PORT = process.env.PORT || 8001
@@ -21,6 +24,7 @@ app.use(express.json())
 app.use(express.urlencoded({extended:false}))
 app.use(cors('*'))
 app.use(bodyParser.json())
+app.use('/uploads', express.static(path.resolve(__dirname, '../../../uploads')))
 
 app.get('/',(req,res)=>{
     res.send('im running')
@@ -34,6 +38,8 @@ app.use('/api/products',productsRouter)
 app.use('/api/purchase',purchaseRouter)
 app.use('/api/sales',salesRouter)
 app.use('/api/accounts',accountsRouter)
+app.use('/api/returns',returnRouter)
+app.use('/api/reports',reportRouter)
 
 app.use(errorHandler)
 

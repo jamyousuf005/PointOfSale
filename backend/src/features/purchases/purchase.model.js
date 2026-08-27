@@ -11,6 +11,16 @@ const addPurchase = new mongoose.Schema({
     purchaseStatus: {
         type: String,
     },
+    paymentStatus: {
+        type: String
+    },
+    paymentMethod: {
+        type: String
+    },
+    accountId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Account'
+    },
     orderTax: {
         type: Number
     },

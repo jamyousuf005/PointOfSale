@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ChevronDown, RefreshCw, HelpCircle } from 'lucide-react';
 import DragDropImageUpload from '../../core/DragDropUpload';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { CustomSelect } from '../../components/common/CustomSelect';
 
 // Variants from the Category component
 const containerVariants = {
@@ -48,54 +50,9 @@ const itemVariants = {
   visible: { y: 0, opacity: 1 },
 };
 
-const CustomSelect = ({ value, onChange, options, placeholder, name, hasError }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const handleSelect = (option) => {
-    onChange(name, option);
-    setIsOpen(false);
-  };
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 text-left bg-white border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between ${
-          hasError ? 'border-red-500' : 'border-gray-300'
-        }`}
-      >
-        <span className={!value || value === placeholder ? 'text-gray-400' : 'text-gray-900'}>
-          {value || placeholder}
-        </span>
-        <ChevronDown className="h-4 w-4 text-gray-400" />
-      </button>
-
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-          className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
-        >
-          {options.map((option, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => handleSelect(option)}
-              className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
-            >
-              {option}
-            </button>
-          ))}
-        </motion.div>
-      )}
-    </div>
-  );
-};
-
 export default function AddProductForm() {
+  const navigate = useNavigate();
+  const [imageFile, setImageFile] = useState(null);
   const [formData, setFormData] = useState({
     productType: 'Standard',
     productName: '',
@@ -172,27 +129,28 @@ export default function AddProductForm() {
       return;
     }
 
-    const payload = {};
+    const payload = new FormData();
     for (const key in formData) {
-      if (formData[key] !== null && formData[key] !== '') {
-        if (typeof formData[key] === 'object' && !Array.isArray(formData[key])) {
-          payload[key] = formData[key];
-        } else if (Array.isArray(formData[key])) {
-          payload[key] = formData[key];
+      if (formData[key] !== null && formData[key] !== undefined && formData[key] !== '') {
+        if (typeof formData[key] === 'object') {
+          payload.append(key, JSON.stringify(formData[key]));
         } else {
-          payload[key] = formData[key];
+          payload.append(key, formData[key]);
         }
       }
+    }
+
+    if (imageFile) {
+      payload.append('image', imageFile);
     }
 
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify(payload),
+        body: payload,
       });
 
       if (!res.ok) {
@@ -201,37 +159,8 @@ export default function AddProductForm() {
         throw new Error('Network response was not ok');
       }
 
-      const data = await res.json();
-
-      setFormData({
-        productType: 'Standard',
-        productName: '',
-        productCode: '',
-        barcode: 'Code 128',
-        brand: '',
-        category: '',
-        productUnit: '',
-        saleUnit: '',
-        purchaseUnit: '',
-        productCost: 0,
-        productPrice: 0,
-        alertQuantity: '',
-        productTax: 'No Tax',
-        taxMethod: 'Exclusive',
-        featured: false,
-        hasWarehousePrice: false,
-        warehousePrices: {},
-        hasVariant: false,
-        variantString: '',
-        variantList: [],
-        hasPromotion: false,
-        promotionPrice: 0,
-        promotionStart: '',
-        promotionEnd: '',
-        description: '',
-      });
-      setErrors({});
-      alert('Form submitted successfully!');
+      alert('Product added successfully!');
+      navigate('/product/list');
     } catch (err) {
       console.error('Error:', err);
       alert('Failed to submit form. Please try again.');
@@ -502,7 +431,7 @@ export default function AddProductForm() {
           </motion.div>
 
           <motion.div variants={uniformVariants}>
-            <DragDropImageUpload />
+            <DragDropImageUpload value={imageFile} onChange={(file) => setImageFile(file)} />
           </motion.div>
 
           <motion.div className="mt-6" variants={uniformVariants}>

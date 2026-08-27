@@ -4,6 +4,7 @@ import DragDropImageUpload from '../../core/DragDropUpload';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ContextApi } from '../../core/ContextApi';
 import { motion } from 'framer-motion';
+import { CustomSelect } from '../../components/common/CustomSelect';
 
 // Define the animation variants for the outer container.
 const containerVariants = {
@@ -37,6 +38,7 @@ const uniformVariants = {
 
 
 export default function EditProduct() {
+  const [imageFile, setImageFile] = useState(null);
   const [formData, setFormData] = useState({
     productType: 'Standard',
     productName: '',
@@ -54,7 +56,7 @@ export default function EditProduct() {
     taxMethod: 'Exclusive',
     featured: false,
     description: '',
-
+    image: '',
     hasWarehousePrice: false,
     warehousePrices: {},
     hasVariant: false,
@@ -64,12 +66,11 @@ export default function EditProduct() {
     promotionPrice: '',
     promotionStart: '',
     promotionEnd: '',
-
   });
 
   const [errors, setErrors] = useState({});
   const { id } = useParams();
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (id) {
@@ -87,23 +88,6 @@ export default function EditProduct() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-
-    try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      })
-
-      const data = await res.json()
-      setFormData(data)
-    } catch (err) {
-      console.error('Error:', err);
-    }
-
     const requiredFields = [
       'productName',
       'productCode',
@@ -114,7 +98,6 @@ export default function EditProduct() {
     ];
 
     let newErrors = {};
-
     requiredFields.forEach((field) => {
       if (!formData[field] || formData[field].toString().trim() === '') {
         newErrors[field] = 'This field is required.';
@@ -126,46 +109,38 @@ export default function EditProduct() {
 
     const formDataToSend = new FormData();
     for (const key in formData) {
-      if (formData[key] !== null && formData[key] !== '') {
-        formDataToSend.append(key, formData[key]);
+      if (formData[key] !== null && formData[key] !== undefined && formData[key] !== '') {
+        if (typeof formData[key] === 'object') {
+          formDataToSend.append(key, JSON.stringify(formData[key]));
+        } else {
+          formDataToSend.append(key, formData[key]);
+        }
       }
     }
-    navigate('/product/list')
 
+    if (imageFile) {
+      formDataToSend.append('image', imageFile);
+    }
 
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formDataToSend
+      });
 
-    // setFormData({
-    //   productType: 'Standard',
-    //   productName: '',
-    //   productCode: '',
-    //   barcode: 'Code 128',
-    //   brand: '',
-    //   category: '',
-    //   productUnit: '',
-    //   saleUnit: 'Nothing selected',
-    //   purchaseUnit: 'Nothing selected',
-    //   productCost: '',
-    //   productPrice: '',
-    //   alertQuantity: '',
-    //   productTax: 'No Tax',
-    //   taxMethod: 'Exclusive',
-    //   featured: false,
-    //   hasWarehousePrice: false,
-    //   warehousePrices: {},
-    //   hasVariant: false,
-    //   variantString: '',
-    //   variantList: [],
-    //   hasPromotion: false,
-    //   promotionPrice: '',
-    //   promotionStart: '',
-    //   promotionEnd: '',
-    //   description: ''
-    // });
+      if (!res.ok) {
+        throw new Error('Failed to update product');
+      }
 
-    setErrors({});
-    alert('Form submitted!');
-
-
+      alert('Product updated successfully!');
+      navigate('/product/list');
+    } catch (err) {
+      console.error('Error:', err);
+      alert('Error updating product');
+    }
   };
 
 
@@ -185,56 +160,6 @@ export default function EditProduct() {
   const handleInputChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
     validateField(name, value);
-  };
-
-  const CustomSelect = ({ value, onChange, options, placeholder, name, required = false }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const hasError = errors[name];
-
-
-    const brandData = [
-      { id: 1, name: 'Dell', hasImage: true },
-      { id: 2, name: 'Club Special', image: null, hasImage: false },
-      { id: 3, name: 'Mac', image: null, hasImage: true },
-      { id: 4, name: 'HP', image: null, hasImage: true },
-      { id: 5, name: 'Oppo', image: null, hasImage: true },
-      { id: 6, name: 'Vivo', image: null, hasImage: true },
-    ];
-
-
-    return (
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className={`w-full px-3 py-2 text-left bg-white border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between ${hasError ? 'border-red-500' : 'border-gray-300'
-            }`}
-        >
-          <span className={value === placeholder || !value ? 'text-gray-400' : 'text-gray-900'}>
-            {value || placeholder}
-          </span>
-          <ChevronDown className="h-4 w-4 text-gray-400" />
-        </button>
-
-        {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-            {options.map((option, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => {
-                  onChange(name, option);
-                  setIsOpen(false);
-                }}
-                className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -475,7 +400,15 @@ export default function EditProduct() {
             </div>
           </div>
 
-          <div> <DragDropImageUpload /> </div>
+          <div>
+            <DragDropImageUpload
+              value={imageFile || formData.image}
+              onChange={(file) => {
+                setImageFile(file);
+                if (!file) setFormData(prev => ({ ...prev, image: '' }));
+              }}
+            />
+          </div>
 
           <div className='mt-6'>
             <label className="block text-sm font-medium text-gray-700 mb-2">

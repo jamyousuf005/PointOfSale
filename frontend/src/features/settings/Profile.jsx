@@ -82,7 +82,7 @@ export default function Profile() {
   return (
     // Apply the container variants to the outermost div
     <motion.div 
-      className="min-h-screen bg-gray-50 p-4 md:p-8"
+      className="p-7"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -95,10 +95,10 @@ export default function Profile() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Update User Profile Section */}
           <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6">Update User Profile</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Update User Profile</h2>
             
             <p className="text-sm text-gray-500 mb-6 italic">
-              The field labels marked with * are required input fields.
+              The field labels marked with <span className="text-red-500">*</span> are required input fields.
             </p>
 
             <div className="space-y-6">
@@ -161,19 +161,23 @@ export default function Profile() {
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={handleProfileSubmit}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-              >
-                Submit
-              </button>
+              <motion.div className="flex justify-start mt-6" variants={uniformVariants}>
+                <motion.button
+                  type="button"
+                  onClick={handleProfileSubmit}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition duration-200"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Submit
+                </motion.button>
+              </motion.div>
             </div>
           </div>
 
           {/* Change Password Section */}
           <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6">Change Password</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Change Password</h2>
 
             <div className="space-y-6">
               <div>
@@ -221,13 +225,17 @@ export default function Profile() {
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={handlePasswordSubmit}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-              >
-                Submit
-              </button>
+              <motion.div className="flex justify-start mt-6" variants={uniformVariants}>
+                <motion.button
+                  type="button"
+                  onClick={handlePasswordSubmit}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition duration-200"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Submit
+                </motion.button>
+              </motion.div>
             </div>
           </div>
         </div>

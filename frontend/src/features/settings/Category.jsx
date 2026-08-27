@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { ContextApi } from '../../core/ContextApi';
 import { motion } from 'framer-motion';
+import TableHeaderControls from '../../components/common/TableHeaderControls';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -9,17 +10,6 @@ const containerVariants = {
     transition: {
       staggerChildren: 0.2,
       delayChildren: 0.1
-    }
-  }
-};
-
-const gridVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2
     }
   }
 };
@@ -41,24 +31,43 @@ const uniformVariants = {
   }
 };
 
+const initialCategories = [
+  {
+    id: 1,
+    image: null,
+    category: 'Laptop',
+    parentCategory: 'N/A',
+    productCount: 2,
+    stockQty: 6,
+    stockWorthPrice: 132000,
+    stockWorthCost: 132000,
+  },
+];
+
 const Category = () => {
   const { laptop } = useContext(ContextApi);
+  const [categories, setCategories] = useState(
+    initialCategories.map(c => ({ ...c, image: laptop }))
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [recordsPerPage, setRecordsPerPage] = useState('10');
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
 
-  const categories = [
-    {
-      id: 1,
-      image: laptop,
-      category: 'Laptop',
-      parentCategory: 'N/A',
-      productCount: 2,
-      stockQty: 6,
-      stockWorth: { price: 132000, cost: 132000 },
-    },
-  ];
+  const [columns, setColumns] = useState([
+    { key: 'image', label: 'Image', visible: true },
+    { key: 'category', label: 'Category', visible: true },
+    { key: 'parentCategory', label: 'Parent Category', visible: true },
+    { key: 'productCount', label: '# Products', visible: true },
+    { key: 'stockQty', label: 'Stock Qty', visible: true },
+    { key: 'stockWorth', label: 'Worth (Price / Cost)', visible: true },
+  ]);
+
+  const handleColumnToggle = (columnKey) => {
+    setColumns((prev) =>
+      prev.map((col) => (col.key === columnKey ? { ...col, visible: !col.visible } : col))
+    );
+  };
 
   const filteredCategories = categories.filter(cat =>
     cat.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -78,7 +87,24 @@ const Category = () => {
   };
 
   const handleAction = (action, rowId) => {
+    if (action === 'Delete') {
+      if (window.confirm('Are you sure you want to delete this category?')) {
+        setCategories((prev) => prev.filter((c) => c.id !== rowId));
+      }
+    }
     setOpenActionId(null);
+  };
+
+  const handleBulkDelete = () => {
+    if (window.confirm(`Are you sure you want to delete ${selectedRows.length} category(ies)?`)) {
+      setCategories((prev) => prev.filter((c) => !selectedRows.includes(c.id)));
+      setSelectedRows([]);
+    }
+  };
+
+  const isColVisible = (key) => {
+    const col = columns.find((c) => c.key === key);
+    return col ? col.visible !== false : true;
   };
 
   return (
@@ -92,56 +118,29 @@ const Category = () => {
         className="w-full bg-white rounded-lg shadow-sm p-6"
         variants={uniformVariants}
       >
-        <motion.div className="sm:p-4" variants={uniformVariants}>
-          {/* Top Buttons */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button 
-              className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base"
-            >
-              + Add Category
-            </button>
-            <button 
-              className="bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1"
-            >
-              📁 Import Category
-            </button>
-          </div>
-
-          {/* Search + Records */}
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-            <div className="flex items-center gap-2">
-              <select
-                className="border border-purple-300 text-purple-700 rounded-md px-2 py-1 text-sm"
-                value={recordsPerPage}
-                onChange={(e) => setRecordsPerPage(e.target.value)}
-              >
-                <option>10</option>
-                <option>25</option>
-                <option>50</option>
-              </select>
-              <span className="text-gray-600 text-sm">records per page</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Search</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border rounded-md px-2 py-1 text-sm outline-none focus:ring-2 ring-purple-300"
-                placeholder="Search category..."
-              />
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button className="bg-rose-400 hover:bg-rose-500 text-white px-2 sm:px-3 py-1 rounded-md text-sm">PDF</button>
-              <button className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 sm:px-3 py-1 rounded-md text-sm">CSV</button>
-              <button className="bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Print</button>
-              <button className="bg-red-500 hover:bg-red-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Delete</button>
-              <button className="bg-purple-500 hover:bg-purple-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Column Visibility</button>
-            </div>
-          </div>
-        </motion.div>
+        <TableHeaderControls
+          title="Category List"
+          addLabel="+ Add Category"
+          onAdd={() => alert('Add Category clicked')}
+          extraButtons={[
+            {
+              label: '📁 Import Category',
+              onClick: () => alert('Import Category clicked'),
+              className: 'bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1 transition-colors shadow-sm'
+            }
+          ]}
+          recordsPerPage={recordsPerPage}
+          onRecordsPerPageChange={setRecordsPerPage}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search category..."
+          data={filteredCategories}
+          exportFilename="Category_List"
+          columns={columns}
+          onColumnToggle={handleColumnToggle}
+          selectedCount={selectedRows.length}
+          onBulkDelete={handleBulkDelete}
+        />
 
         {/* Table */}
         <div className="bg-white shadow-sm overflow-hidden mt-6">
@@ -157,12 +156,12 @@ const Category = () => {
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
                   </th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Image</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Category</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Parent Category</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700"># Products</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Stock Qty</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Worth (Price / Cost)</th>
+                  {isColVisible('image') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Image</th>}
+                  {isColVisible('category') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Category</th>}
+                  {isColVisible('parentCategory') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Parent Category</th>}
+                  {isColVisible('productCount') && <th className="px-3 py-4 text-left font-semibold text-gray-700"># Products</th>}
+                  {isColVisible('stockQty') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Stock Qty</th>}
+                  {isColVisible('stockWorth') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Worth (Price / Cost)</th>}
                   <th className="px-3 py-4 text-left font-semibold text-gray-700">Action</th>
                 </tr>
               </thead>
@@ -177,21 +176,25 @@ const Category = () => {
                         className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                       />
                     </td>
-                    <td className="px-3 py-4">
-                      <img
-                        src={cat.image}
-                        alt={cat.category}
-                        className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded"
-                      />
-                    </td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900">{cat.category}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">{cat.parentCategory}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">{cat.productCount}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">{cat.stockQty}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">
-                      <span className="block">PKR {cat.stockWorth.price.toLocaleString()}</span>
-                      <span className="block text-gray-400 text-xs">/ PKR {cat.stockWorth.cost.toLocaleString()}</span>
-                    </td>
+                    {isColVisible('image') && (
+                      <td className="px-3 py-4">
+                        <img
+                          src={cat.image}
+                          alt={cat.category}
+                          className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded"
+                        />
+                      </td>
+                    )}
+                    {isColVisible('category') && <td className="px-3 py-4 text-sm font-medium text-gray-900">{cat.category}</td>}
+                    {isColVisible('parentCategory') && <td className="px-3 py-4 text-sm text-gray-600">{cat.parentCategory}</td>}
+                    {isColVisible('productCount') && <td className="px-3 py-4 text-sm text-gray-600">{cat.productCount}</td>}
+                    {isColVisible('stockQty') && <td className="px-3 py-4 text-sm text-gray-600">{cat.stockQty}</td>}
+                    {isColVisible('stockWorth') && (
+                      <td className="px-3 py-4 text-sm text-gray-600">
+                        <span className="block">PKR {cat.stockWorthPrice.toLocaleString()}</span>
+                        <span className="block text-gray-400 text-xs">/ PKR {cat.stockWorthCost.toLocaleString()}</span>
+                      </td>
+                    )}
                     <td className="px-3 py-4 relative">
                       <button
                         onClick={() => setOpenActionId(prev => (prev === cat.id ? null : cat.id))}

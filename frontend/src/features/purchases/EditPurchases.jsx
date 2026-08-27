@@ -3,6 +3,7 @@ import { ChevronDown, Trash2 } from 'lucide-react';
 import { ContextApi } from '../../core/ContextApi';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { CustomSelect } from '../../components/common/CustomSelect';
 
 // Define the animation variants for the outer container.
 const containerVariants = {
@@ -35,7 +36,7 @@ const uniformVariants = {
 };
 
 const EditPurchases = () => {
-    const { products, setProducts, customers } = useContext(ContextApi);
+    const { products: globalProducts, customers, setPurchases } = useContext(ContextApi);
     const { id } = useParams();
 
     const [formData, setFormData] = useState({
@@ -50,6 +51,7 @@ const EditPurchases = () => {
 
     const [productSearch, setProductSearch] = useState('');
     const [allProducts, setAllProducts] = useState([]);
+    const [selectedProducts, setSelectedProducts] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -71,7 +73,7 @@ const EditPurchases = () => {
                     shippingCost: data.shippingCost,
                     note: data.note,
                 });
-                setProducts(data.products);
+                setSelectedProducts(data.products || []);
             })
             .catch(err => console.error("Error fetching purchase:", err));
         }
@@ -107,11 +109,11 @@ const EditPurchases = () => {
 
     const addProduct = (product) => {
         // Find if the product already exists in the cart
-        const existingProduct = products.find(p => p.productCode === product.productCode);
+        const existingProduct = selectedProducts.find(p => p.productCode === product.productCode);
 
         if (existingProduct) {
             // If exists, just update the quantity
-            setProducts(prev => prev.map(p =>
+            setSelectedProducts(prev => prev.map(p =>
                 p.productCode === product.productCode
                     ? { ...p, quantity: p.quantity + 1 }
                     : p
@@ -126,13 +128,13 @@ const EditPurchases = () => {
                 tax: 0,      // Individual product tax (if applicable)
                 subTotal: (parseFloat(product.productCost) || 0) * 1,
             };
-            setProducts(prev => [...prev, newProduct]);
+            setSelectedProducts(prev => [...prev, newProduct]);
         }
         setProductSearch('');
     };
 
     const updateProductDetails = (productId, field, value) => {
-        setProducts(prev => prev.map(p => {
+        setSelectedProducts(prev => prev.map(p => {
             if (p._id === productId) {
                 let updatedProduct = { ...p, [field]: parseFloat(value) || 0 };
 
@@ -153,11 +155,11 @@ const EditPurchases = () => {
     };
 
     const removeProduct = (idToRemove) => {
-        setProducts(prev => prev.filter(product => product._id !== idToRemove));
+        setSelectedProducts(prev => prev.filter(product => product._id !== idToRemove));
     };
 
     const calculateGrandTotal = () => {
-        const productTotal = (products || []).reduce((sum, product) => sum + (parseFloat(product.subTotal) || 0), 0);
+        const productTotal = (selectedProducts || []).reduce((sum, product) => sum + (parseFloat(product.subTotal) || 0), 0);
         const orderDiscount = parseFloat(formData.discount) || 0;
         const shippingCost = parseFloat(formData.shippingCost) || 0;
         const orderTaxRate = parseFloat(formData.orderTax) || 0;
@@ -178,7 +180,7 @@ const EditPurchases = () => {
 
         const submissionData = {
             ...formData,
-            products: products.map(({ _id, ...product }) => ({ ...product, tax: formData.orderTax, discount: formData.discount, subTotal: calculateSubTotalForProduct(product) })),
+            products: selectedProducts.map(({ _id, ...product }) => ({ ...product, tax: formData.orderTax, discount: formData.discount, subTotal: calculateSubTotalForProduct(product) })),
             total: calculateGrandTotal(),
         };
 
@@ -199,6 +201,11 @@ const EditPurchases = () => {
             }
 
             const updatedPurchase = await res.json();
+            
+            const returnedPurchase = updatedPurchase.purchase || updatedPurchase;
+            if (setPurchases && returnedPurchase && returnedPurchase._id) {
+               setPurchases(prev => prev.map(p => p._id === returnedPurchase._id ? returnedPurchase : p));
+            }
 
             navigate('/purchase/list');
 
@@ -231,7 +238,7 @@ const EditPurchases = () => {
     return (
         // Apply outer container variants
         <motion.div 
-            className='p-6'
+            className='p-7'
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -242,47 +249,34 @@ const EditPurchases = () => {
                 variants={uniformVariants}
             >
                 <h1 className="text-2xl font-semibold text-gray-900 mb-6">Edit Purchase</h1>
-                <div className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     <p className="text-sm text-gray-500 italic">
-                        The field labels marked with * are required input fields.
+                        The field labels marked with <span className="text-red-500">*</span> are required input fields.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Warehouse <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                                <select
-                                    value={formData.warehouse}
-                                    onChange={(e) => handleInputChange('warehouse', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                                    required
-                                >
-                                    <option value="">Select warehouse...</option>
-                                    {warehouses.map(warehouse => (
-                                        <option key={warehouse} value={warehouse}>{warehouse}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
-                            </div>
+                            <CustomSelect
+                                name="warehouse"
+                                value={formData.warehouse}
+                                onChange={handleInputChange}
+                                options={warehouses}
+                                placeholder="Select warehouse..."
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Supplier
                             </label>
-                            <div className="relative">
-                                <select
-                                    value={formData.supplier}
-                                    onChange={(e) => handleInputChange('supplier', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                                >
-                                    <option value="">Select supplier...</option>
-                                    {customers.map(cus => (
-                                        <option key={cus.id} value={cus.name}>{cus.name}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
-                            </div>
+                            <CustomSelect
+                                name="supplier"
+                                value={formData.supplier}
+                                onChange={handleInputChange}
+                                options={customers.map(c => c.name)}
+                                placeholder="Select supplier..."
+                            />
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -290,18 +284,12 @@ const EditPurchases = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Purchase Status
                             </label>
-                            <div className="relative">
-                                <select
-                                    value={formData.purchaseStatus}
-                                    onChange={(e) => handleInputChange('purchaseStatus', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                                >
-                                    {purchaseStatusOptions.map(status => (
-                                        <option key={status} value={status}>{status}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
-                            </div>
+                            <CustomSelect
+                                name="purchaseStatus"
+                                value={formData.purchaseStatus}
+                                onChange={handleInputChange}
+                                options={purchaseStatusOptions}
+                            />
                         </div>
                     </div>
                     <div>
@@ -314,7 +302,7 @@ const EditPurchases = () => {
                                 value={productSearch}
                                 onChange={(e) => setProductSearch(e.target.value)}
                                 placeholder="Type product name or code..."
-                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             />
                             <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <span className="text-gray-400">📦</span>
@@ -342,31 +330,31 @@ const EditPurchases = () => {
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Name</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Code</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Quantity</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Net Unit Cost</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">SubTotal</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700"></th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Code</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Quantity</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Net Unit Cost</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">SubTotal</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {(products || []).map((product) => (
+                                    {(selectedProducts || []).map((product) => (
                                         <tr key={product._id}>
-                                            <td className="px-4 py-3">{product.productName}</td>
-                                            <td className="px-4 py-3">{product.productCode}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-900">{product.productName}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-900">{product.productCode}</td>
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="number"
                                                     value={product.quantity}
                                                     onChange={(e) => updateProductDetails(product._id, 'quantity', e.target.value)}
-                                                    className="w-20 px-2 py-1 border border-gray-300 rounded-md"
+                                                    className="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                     min="1"
                                                 />
                                             </td>
-                                            <td className="px-4 py-3">{product.productCost}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-900">{product.productCost}</td>
                                             <td className="px-4 py-3">
-                                                <span className="font-medium text-gray-900">
+                                                <span className="font-medium text-sm text-gray-900">
                                                     {calculateSubTotalForProduct(product).toFixed(2)}
                                                 </span>
                                             </td>
@@ -374,9 +362,9 @@ const EditPurchases = () => {
                                                 <button
                                                     type="button"
                                                     onClick={() => removeProduct(product._id)}
-                                                    className='flex items-center gap-1 py-1 px-2 rounded bg-red-400 text-white hover:bg-red-500'
+                                                    className='flex items-center gap-1 py-1 px-2 rounded bg-red-400 text-white hover:bg-red-500 text-sm'
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    Delete <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </td>
                                         </tr>
@@ -388,18 +376,15 @@ const EditPurchases = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Order Tax</label>
-                            <div className="relative">
-                                <select
-                                    value={formData.orderTax}
-                                    onChange={(e) => handleInputChange('orderTax', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm appearance-none bg-white"
-                                >
-                                    {taxOptions.map(tax => (
-                                        <option key={tax.label} value={tax.value}>{tax.label}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
-                            </div>
+                            <CustomSelect
+                                name="orderTax"
+                                value={taxOptions.find(t => t.value === formData.orderTax)?.label || 'No Tax'}
+                                onChange={(name, label) => {
+                                    const opt = taxOptions.find(t => t.label === label);
+                                    if(opt) handleInputChange('orderTax', opt.value);
+                                }}
+                                options={taxOptions.map(t => t.label)}
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Discount</label>
@@ -407,7 +392,7 @@ const EditPurchases = () => {
                                 type="number"
                                 value={formData.discount}
                                 onChange={(e) => handleInputChange('discount', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 min="0" step="0.01"
                             />
                         </div>
@@ -417,7 +402,7 @@ const EditPurchases = () => {
                                 type="number"
                                 value={formData.shippingCost}
                                 onChange={(e) => handleInputChange('shippingCost', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 min="0" step="0.01"
                             />
                         </div>
@@ -428,19 +413,20 @@ const EditPurchases = () => {
                             value={formData.note}
                             onChange={(e) => handleInputChange('note', e.target.value)}
                             rows={4}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Enter any additional notes..."
                         />
                     </div>
-                    <div className="flex justify-start">
-                        <button
-                            type="button"
-                            onClick={handleSubmit}
-                            className="px-6 py-2 bg-purple-500 text-white font-medium rounded-md hover:bg-purple-700"
+                    <motion.div className="flex justify-start mt-6" variants={uniformVariants}>
+                        <motion.button
+                            type="submit"
+                            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition duration-200"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                         >
                             Submit
-                        </button>
-                    </div>
+                        </motion.button>
+                    </motion.div>
                     <div className="mt-6 p-4 bg-gray-50 rounded-md">
                         <div className="text-right">
                             <span className="text-lg font-semibold text-gray-900">
@@ -448,7 +434,7 @@ const EditPurchases = () => {
                             </span>
                         </div>
                     </div>
-                </div>
+                </form>
             </motion.div>
         </motion.div>
     );

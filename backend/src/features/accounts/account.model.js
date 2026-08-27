@@ -13,6 +13,10 @@
                 type:Number,
                 required:true,
             },
+            currentBalance: {
+                type: Number,
+                default: function() { return this.initialBalance; }
+            },
             note:{
                 type:String,
                 required:true

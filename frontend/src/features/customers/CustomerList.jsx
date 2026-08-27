@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import TableHeaderControls from '../../components/common/TableHeaderControls';
+import { ContextApi } from '../../core/ContextApi';
 
 // Defining the variants for the animation
 const containerVariants = {
@@ -31,49 +34,32 @@ const uniformVariants = {
   }
 };
 
-const customers = [
-  {
-    id: 1,
-    group: "Regular Customer",
-    name: "Kamal udin Memon",
-    company: "Teacher",
-    email: "",
-    phone: "03133006400",
-    tax: "",
-    address: "Badurabad Colony Dadu, Dadu ,Pakistan",
-    balance: "0.00",
-  },
-  {
-    id: 2,
-    group: "Regular Customer",
-    name: "Farhan Mallah",
-    company: "ELDC Dadu",
-    email: "",
-    phone: "03103635188",
-    tax: "0",
-    address: "ELDC Dado Road Dadu, Dadu ,Pakistan",
-    balance: "0.00",
-  },
-  {
-    id: 3,
-    group: "Regular Customer",
-    name: "Muhammad Saleem Mangi",
-    company: "advocate",
-    email: "",
-    phone: "03003238348",
-    tax: "",
-    address: "Wapda Colony Moro, Moro ,Pakistan",
-    balance: "0.00",
-  },
-];
-
 const CustomerList = () => {
+  const navigate = useNavigate();
+  const { customers, setCustomers } = React.useContext(ContextApi);
   const [searchTerm, setSearchTerm] = useState("");
   const [recordsPerPage, setRecordsPerPage] = useState("10");
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
 
-  const filteredCustomers = customers.filter(
+  const [columns, setColumns] = useState([
+    { key: 'group', label: 'Customer Group', visible: true },
+    { key: 'name', label: 'Name', visible: true },
+    { key: 'company', label: 'Company', visible: true },
+    { key: 'email', label: 'Email', visible: true },
+    { key: 'phone', label: 'Phone', visible: true },
+    { key: 'tax', label: 'Tax', visible: true },
+    { key: 'address', label: 'Address', visible: true },
+    { key: 'balance', label: 'Balance', visible: true },
+  ]);
+
+  const handleColumnToggle = (columnKey) => {
+    setColumns((prev) =>
+      prev.map((col) => (col.key === columnKey ? { ...col, visible: !col.visible } : col))
+    );
+  };
+
+  const filteredCustomers = (customers || []).filter(
     (customer) =>
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.phone.includes(searchTerm)
@@ -94,11 +80,27 @@ const CustomerList = () => {
   };
 
   const handleAction = (action, rowId) => {
+    if (action === 'Delete') {
+      if (window.confirm("Are you sure you want to delete this customer?")) {
+        setCustomers((prev) => prev.filter((c) => c.id !== rowId));
+      }
+    }
     setOpenActionId(null);
   };
 
+  const handleBulkDelete = () => {
+    if (window.confirm(`Are you sure you want to delete ${selectedRows.length} customer(s)?`)) {
+      setCustomers((prev) => prev.filter((c) => !selectedRows.includes(c.id)));
+      setSelectedRows([]);
+    }
+  };
+
+  const isColVisible = (key) => {
+    const col = columns.find((c) => c.key === key);
+    return col ? col.visible !== false : true;
+  };
+
   return (
-    // Outer layout animated with Framer Motion
     <motion.div
       className="p-6"
       variants={containerVariants}
@@ -109,51 +111,29 @@ const CustomerList = () => {
         className="w-full bg-white rounded-lg shadow-sm p-6"
         variants={uniformVariants}
       >
-        {/* Header Controls */}
-        <div className="sm:p-4">
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-4 py-2 rounded-md text-sm sm:text-base">
-              + Add Customer
-            </button>
-            <button className="bg-purple-500 hover:bg-purple-600 text-white font-medium px-4 py-2 rounded-md text-sm sm:text-base">
-              Import Customer
-            </button>
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-            <div className="flex items-center gap-2">
-              <select
-                className="border border-purple-300 text-purple-700 rounded-md px-2 py-1 text-sm"
-                value={recordsPerPage}
-                onChange={(e) => setRecordsPerPage(e.target.value)}
-              >
-                <option>10</option>
-                <option>25</option>
-                <option>50</option>
-              </select>
-              <span className="text-gray-600 text-sm">records per page</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Search</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border rounded-md px-2 py-1 text-sm outline-none focus:ring-2 ring-purple-300"
-                placeholder="Search customers..."
-              />
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button className="bg-rose-400 hover:bg-rose-500 text-white px-3 py-1 rounded-md text-sm">PDF</button>
-              <button className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-md text-sm">CSV</button>
-              <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm">Print</button>
-              <button className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">Delete</button>
-              <button className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-md text-sm">Column Visibility</button>
-            </div>
-          </div>
-        </div>
+        <TableHeaderControls
+          title="Customer List"
+          addLabel="+ Add Customer"
+          onAdd={() => navigate('/customer/add')}
+          extraButtons={[
+            {
+              label: '📁 Import Customer',
+              onClick: () => alert('Import Customer clicked'),
+              className: 'bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1 transition-colors shadow-sm'
+            }
+          ]}
+          recordsPerPage={recordsPerPage}
+          onRecordsPerPageChange={setRecordsPerPage}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search customers..."
+          data={filteredCustomers}
+          exportFilename="Customers_List"
+          columns={columns}
+          onColumnToggle={handleColumnToggle}
+          selectedCount={selectedRows.length}
+          onBulkDelete={handleBulkDelete}
+        />
 
         {/* Table Section */}
         <div className="bg-white shadow-md overflow-hidden">
@@ -171,14 +151,14 @@ const CustomerList = () => {
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
                   </th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Customer Group</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Name</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Company</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Email</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Phone</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Tax</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Address</th>
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Balance</th>
+                  {isColVisible('group') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Customer Group</th>}
+                  {isColVisible('name') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Name</th>}
+                  {isColVisible('company') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Company</th>}
+                  {isColVisible('email') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Email</th>}
+                  {isColVisible('phone') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Phone</th>}
+                  {isColVisible('tax') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Tax</th>}
+                  {isColVisible('address') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Address</th>}
+                  {isColVisible('balance') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Balance</th>}
                   <th className="px-3 py-4 font-semibold text-gray-700 text-left">Action</th>
                 </tr>
               </thead>
@@ -193,14 +173,14 @@ const CustomerList = () => {
                         className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                       />
                     </td>
-                    <td className="px-3 py-4 text-sm">{customer.group}</td>
-                    <td className="px-3 py-4 text-sm">{customer.name}</td>
-                    <td className="px-3 py-4 text-sm">{customer.company}</td>
-                    <td className="px-3 py-4 text-sm">{customer.email}</td>
-                    <td className="px-3 py-4 text-sm">{customer.phone}</td>
-                    <td className="px-3 py-4 text-sm">{customer.tax}</td>
-                    <td className="px-3 py-4 text-sm">{customer.address}</td>
-                    <td className="px-3 py-4 text-sm">{customer.balance}</td>
+                    {isColVisible('group') && <td className="px-3 py-4 text-sm">{customer.group}</td>}
+                    {isColVisible('name') && <td className="px-3 py-4 text-sm">{customer.name}</td>}
+                    {isColVisible('company') && <td className="px-3 py-4 text-sm">{customer.company}</td>}
+                    {isColVisible('email') && <td className="px-3 py-4 text-sm">{customer.email || 'N/A'}</td>}
+                    {isColVisible('phone') && <td className="px-3 py-4 text-sm">{customer.phone}</td>}
+                    {isColVisible('tax') && <td className="px-3 py-4 text-sm">{customer.tax || 'N/A'}</td>}
+                    {isColVisible('address') && <td className="px-3 py-4 text-sm">{customer.address}</td>}
+                    {isColVisible('balance') && <td className="px-3 py-4 text-sm">{customer.balance}</td>}
                     <td className="px-3 py-4 relative">
                       <button
                         onClick={() => setOpenActionId(prev => prev === customer.id ? null : customer.id)}

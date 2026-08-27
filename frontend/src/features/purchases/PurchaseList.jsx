@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ContextApi } from '../../core/ContextApi';
 import { motion } from 'framer-motion';
+import TableHeaderControls from '../../components/common/TableHeaderControls';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -38,7 +39,19 @@ const PurchaseList = () => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
 
+  const [columns, setColumns] = useState([
+    { key: 'createdAt', label: 'Date', visible: true },
+    { key: '_id', label: 'Reference', visible: true },
+    { key: 'supplier', label: 'Supplier', visible: true },
+    { key: 'purchaseStatus', label: 'Purchase Status', visible: true },
+    { key: 'total', label: 'Grand Total', visible: true },
+    { key: 'paid', label: 'Paid', visible: true },
+    { key: 'due', label: 'Due', visible: true },
+    { key: 'paymentStatus', label: 'Payment Status', visible: true },
+  ]);
+
   const { purchases, setPurchases } = useContext(ContextApi);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase`, {
@@ -47,15 +60,20 @@ const PurchaseList = () => {
       }
     })
     .then((res) => res.json())
-    .then((data) => setPurchases(data.showAllPurchases))
+    .then((data) => setPurchases(data.showAllPurchases || []))
     .catch((err) => console.error('error fetching api', err));
   }, [setPurchases]);
 
-  const navigate = useNavigate();
+  const handleColumnToggle = (columnKey) => {
+    setColumns((prev) =>
+      prev.map((col) => (col.key === columnKey ? { ...col, visible: !col.visible } : col))
+    );
+  };
 
-  const filteredPurchases = purchases.filter(purchase =>
-    purchase.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    purchase.warehouse.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPurchases = (purchases || []).filter(purchase =>
+    (purchase.supplier && purchase.supplier.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (purchase.warehouse && purchase.warehouse.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (purchase._id && purchase._id.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const toggleRowSelection = (id) => {
@@ -78,7 +96,7 @@ const PurchaseList = () => {
 
   const handleDelete = async (action, rowId) => {
     if (action === 'Delete') {
-      const confirmDelete = window.confirm("Are you sure you want to delete this purchase");
+      const confirmDelete = window.confirm("Are you sure you want to delete this purchase?");
       if (!confirmDelete) return;
     }
     try {
@@ -92,11 +110,32 @@ const PurchaseList = () => {
 
       if (res.ok) {
         setPurchases((prev) => prev.filter(p => p._id !== rowId));
-      } else {
       }
     } catch (err) {
+      console.error(err);
     }
     setOpenActionId(null);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} selected purchase(s)?`)) return;
+    for (const id of selectedRows) {
+      try {
+        await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setPurchases((prev) => prev.filter(p => !selectedRows.includes(p._id)));
+    setSelectedRows([]);
+  };
+
+  const isColVisible = (key) => {
+    const col = columns.find((c) => c.key === key);
+    return col ? col.visible !== false : true;
   };
 
   return (
@@ -110,50 +149,29 @@ const PurchaseList = () => {
         className="w-full bg-white rounded-lg shadow-sm p-6"
         variants={uniformVariants}
       >
-        <motion.div className="sm:p-4" variants={uniformVariants}>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button onClick={() => navigate('/purchase/add')} className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base">
-              + Add Purchase
-            </button>
-            <button className="bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1">
-              📁 Import Purchase
-            </button>
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-            <div className="flex items-center gap-2">
-              <select
-                className="border border-purple-300 text-purple-700 rounded-md px-2 py-1 text-sm"
-                value={recordsPerPage}
-                onChange={(e) => setRecordsPerPage(e.target.value)}
-              >
-                <option>10</option>
-                <option>25</option>
-                <option>50</option>
-              </select>
-              <span className="text-gray-600 text-sm">records per page</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Search</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border rounded-md px-2 py-1 text-sm outline-none focus:ring-2 ring-purple-300"
-                placeholder="Search purchases..."
-              />
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button className="bg-rose-400 hover:bg-rose-500 text-white px-2 sm:px-3 py-1 rounded-md text-sm">PDF</button>
-              <button className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 sm:px-3 py-1 rounded-md text-sm">CSV</button>
-              <button className="bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Print</button>
-              <button className="bg-red-500 hover:bg-red-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Delete</button>
-              <button className="bg-purple-500 hover:bg-purple-600 text-white px-2 sm:px-3 py-1 rounded-md text-sm">Column Visibility</button>
-            </div>
-          </div>
-        </motion.div>
+        <TableHeaderControls
+          title="Purchase List"
+          addLabel="+ Add Purchase"
+          onAdd={() => navigate('/purchase/add')}
+          extraButtons={[
+            {
+              label: '📁 Import Purchase',
+              onClick: () => alert('Import Purchase clicked'),
+              className: 'bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1 transition-colors shadow-sm'
+            }
+          ]}
+          recordsPerPage={recordsPerPage}
+          onRecordsPerPageChange={setRecordsPerPage}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search purchases..."
+          data={filteredPurchases}
+          exportFilename="Purchases_List"
+          columns={columns}
+          onColumnToggle={handleColumnToggle}
+          selectedCount={selectedRows.length}
+          onBulkDelete={handleBulkDelete}
+        />
 
         <div className="bg-white shadow-md overflow-hidden mt-6">
           <div className="overflow-x-auto">
@@ -168,14 +186,14 @@ const PurchaseList = () => {
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
                   </th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Date</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Reference</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Supplier</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Purchase Status</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Grand Total</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Paid</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Due</th>
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Payment Status</th>
+                  {isColVisible('createdAt') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Date</th>}
+                  {isColVisible('_id') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Reference</th>}
+                  {isColVisible('supplier') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Supplier</th>}
+                  {isColVisible('purchaseStatus') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Purchase Status</th>}
+                  {isColVisible('total') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Grand Total</th>}
+                  {isColVisible('paid') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Paid</th>}
+                  {isColVisible('due') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Due</th>}
+                  {isColVisible('paymentStatus') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Payment Status</th>}
                   <th className="px-3 py-4 text-left font-semibold text-gray-700">Action</th>
                 </tr>
               </thead>
@@ -190,22 +208,26 @@ const PurchaseList = () => {
                         className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                       />
                     </td>
-                    <td className="px-3 py-4 text-sm text-gray-900"> {purchase.createdAt ? new Date(purchase.createdAt).toLocaleDateString() : 'N/A'}</td>
-                    <td className="px-3 py-4 text-sm text-gray-900">{purchase._id}</td>
-                    <td className="px-3 py-4 text-sm text-gray-900">{purchase.supplier}</td>
-                    <td className="px-3 py-4 text-sm">
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                        {purchase.purchaseStatus}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900">{purchase.total}</td>
-                    <td className="px-3 py-4 text-sm text-gray-600">{purchase.paid}</td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900">{purchase.due}</td>
-                    <td className="px-3 py-4 text-sm">
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                        {purchase.paymentStatus}
-                      </span>
-                    </td>
+                    {isColVisible('createdAt') && <td className="px-3 py-4 text-sm text-gray-900">{purchase.createdAt ? new Date(purchase.createdAt).toLocaleDateString() : 'N/A'}</td>}
+                    {isColVisible('_id') && <td className="px-3 py-4 text-sm text-gray-900">{purchase._id}</td>}
+                    {isColVisible('supplier') && <td className="px-3 py-4 text-sm text-gray-900">{purchase.supplier}</td>}
+                    {isColVisible('purchaseStatus') && (
+                      <td className="px-3 py-4 text-sm">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                          {purchase.purchaseStatus}
+                        </span>
+                      </td>
+                    )}
+                    {isColVisible('total') && <td className="px-3 py-4 text-sm font-medium text-gray-900">${purchase.total}</td>}
+                    {isColVisible('paid') && <td className="px-3 py-4 text-sm text-gray-600">${purchase.paid}</td>}
+                    {isColVisible('due') && <td className="px-3 py-4 text-sm font-medium text-gray-900">${purchase.due}</td>}
+                    {isColVisible('paymentStatus') && (
+                      <td className="px-3 py-4 text-sm">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                          {purchase.paymentStatus}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-4 py-4 relative ">
                       <button
                         onClick={() => setOpenActionId(prev => (prev === purchase._id ? null : purchase._id))}

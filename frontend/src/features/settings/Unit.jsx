@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Search, ChevronDown, ChevronLeft, ChevronRight, Plus, Upload } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
+import TableHeaderControls from '../../components/common/TableHeaderControls';
 
-// Define the animation variants for the outer container.
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -14,7 +14,6 @@ const containerVariants = {
   }
 };
 
-// Define animation variants for the inner content.
 const uniformVariants = {
   hidden: {
     opacity: 0,
@@ -32,19 +31,39 @@ const uniformVariants = {
   }
 };
 
+const initialUnitData = [
+  { id: 1, code: 'PC', name: 'Per PC', baseUnit: 'N/A', operator: '*', operationValue: '1' },
+  { id: 2, code: 'KG', name: 'Kilogram', baseUnit: 'N/A', operator: '*', operationValue: '1' }
+];
+
 const Unit = () => {
+  const [unitData, setUnitData] = useState(initialUnitData);
   const [searchTerm, setSearchTerm] = useState('');
   const [recordsPerPage, setRecordsPerPage] = useState('10');
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [openActionId, setOpenActionId] = useState(null);
 
-  const unitData = [
-    { id: 1, code: 'PC', name: 'Per PC', baseUnit: 'N/A', operator: '*', operationValue: '1' },
-    { id: 2, code: 'KG', name: 'Kilogram', baseUnit: 'N/A', operator: '*', operationValue: '1' }
-  ];
+  const [columns, setColumns] = useState([
+    { key: 'code', label: 'Code', visible: true },
+    { key: 'name', label: 'Name', visible: true },
+    { key: 'baseUnit', label: 'Base Unit', visible: true },
+    { key: 'operator', label: 'Operator', visible: true },
+    { key: 'operationValue', label: 'Operation Value', visible: true },
+  ]);
+
+  const handleColumnToggle = (columnKey) => {
+    setColumns((prev) =>
+      prev.map((col) => (col.key === columnKey ? { ...col, visible: !col.visible } : col))
+    );
+  };
+
+  const filteredUnits = unitData.filter((item) =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleSelectAll = (checked) => {
-    setSelectedItems(checked ? new Set(unitData.map(item => item.id)) : new Set());
+    setSelectedItems(checked ? new Set(filteredUnits.map(item => item.id)) : new Set());
   };
 
   const handleSelectItem = (id, checked) => {
@@ -54,90 +73,84 @@ const Unit = () => {
   };
 
   const handleAction = (action, id) => {
+    if (action === 'Delete') {
+      if (window.confirm("Are you sure you want to delete this unit?")) {
+        setUnitData((prev) => prev.filter((u) => u.id !== id));
+      }
+    }
     setOpenActionId(null);
   };
 
+  const handleBulkDelete = () => {
+    if (window.confirm(`Are you sure you want to delete ${selectedItems.size} unit(s)?`)) {
+      setUnitData((prev) => prev.filter((u) => !selectedItems.has(u.id)));
+      setSelectedItems(new Set());
+    }
+  };
+
+  const isColVisible = (key) => {
+    const col = columns.find((c) => c.key === key);
+    return col ? col.visible !== false : true;
+  };
+
   return (
-    // Apply the container variants to the outermost div
     <motion.div
       className="p-6"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      {/* Apply the uniform variants to the main content div */}
       <motion.div
         className="bg-white rounded-lg shadow-sm p-6"
         variants={uniformVariants}
       >
-        {/* Header */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 py-2 rounded-md text-sm flex items-center gap-1">
-            <Plus className="w-4 h-4" /> Add Unit
-          </button>
-          <button className="bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 py-2 rounded-md text-sm flex items-center gap-1">
-            <Upload className="w-4 h-4" /> Import Unit
-          </button>
-        </div>
-
-        {/* Controls */}
-        <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center mb-4">
-          <div className="flex items-center gap-2">
-            <select
-              value={recordsPerPage}
-              onChange={(e) => setRecordsPerPage(e.target.value)}
-              className="border border-purple-300 text-purple-700 rounded-md px-2 py-1 text-sm"
-            >
-              <option>10</option>
-              <option>25</option>
-              <option>50</option>
-            </select>
-            <span className="text-gray-600 text-sm">records per page</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-700">Search</label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="border rounded-md px-2 py-1 text-sm outline-none focus:ring-2 ring-purple-300"
-              placeholder="Search units..."
-            />
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button className="bg-rose-400 hover:bg-rose-500 text-white px-3 py-1 rounded-md text-sm">PDF</button>
-            <button className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-md text-sm">CSV</button>
-            <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm">Print</button>
-            <button className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">Delete</button>
-            <button className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-md text-sm">Column Visibility</button>
-          </div>
-        </div>
+        <TableHeaderControls
+          title="Unit List"
+          addLabel="+ Add Unit"
+          onAdd={() => alert('Add Unit clicked')}
+          extraButtons={[
+            {
+              label: '📁 Import Unit',
+              onClick: () => alert('Import Unit clicked'),
+              className: 'bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1 transition-colors shadow-sm'
+            }
+          ]}
+          recordsPerPage={recordsPerPage}
+          onRecordsPerPageChange={setRecordsPerPage}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search units..."
+          data={filteredUnits}
+          exportFilename="Units_List"
+          columns={columns}
+          onColumnToggle={handleColumnToggle}
+          selectedCount={selectedItems.size}
+          onBulkDelete={handleBulkDelete}
+        />
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto mt-6">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-4 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedItems.size === unitData.length}
+                    checked={selectedItems.size === filteredUnits.length && filteredUnits.length > 0}
                     onChange={(e) => handleSelectAll(e.target.checked)}
                     className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                   />
                 </th>
-                <th className="px-3 py-4 font-semibold text-gray-700 text-left">Code</th>
-                <th className="px-3 py-4 font-semibold text-gray-700 text-left">Name</th>
-                <th className="px-3 py-4 font-semibold text-gray-700 text-left">Base Unit</th>
-                <th className="px-3 py-4 font-semibold text-gray-700 text-left">Operator</th>
-                <th className="px-3 py-4 font-semibold text-gray-700 text-left">Operation Value</th>
+                {isColVisible('code') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Code</th>}
+                {isColVisible('name') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Name</th>}
+                {isColVisible('baseUnit') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Base Unit</th>}
+                {isColVisible('operator') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Operator</th>}
+                {isColVisible('operationValue') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Operation Value</th>}
                 <th className="px-3 py-4 font-semibold text-gray-700 text-left">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {unitData.map((item) => (
+              {filteredUnits.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-3 py-4">
                     <input
@@ -147,11 +160,11 @@ const Unit = () => {
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
                   </td>
-                  <td className="px-3 py-4 text-sm">{item.code}</td>
-                  <td className="px-3 py-4 text-sm">{item.name}</td>
-                  <td className="px-3 py-4 text-sm">{item.baseUnit}</td>
-                  <td className="px-3 py-4 text-sm">{item.operator}</td>
-                  <td className="px-3 py-4 text-sm">{item.operationValue}</td>
+                  {isColVisible('code') && <td className="px-3 py-4 text-sm">{item.code}</td>}
+                  {isColVisible('name') && <td className="px-3 py-4 text-sm">{item.name}</td>}
+                  {isColVisible('baseUnit') && <td className="px-3 py-4 text-sm">{item.baseUnit}</td>}
+                  {isColVisible('operator') && <td className="px-3 py-4 text-sm">{item.operator}</td>}
+                  {isColVisible('operationValue') && <td className="px-3 py-4 text-sm">{item.operationValue}</td>}
                   <td className="px-3 py-4 relative">
                     <button
                       onClick={() => setOpenActionId(prev => (prev === item.id ? null : item.id))}

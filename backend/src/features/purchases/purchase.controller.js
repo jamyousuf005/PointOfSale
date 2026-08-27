@@ -1,10 +1,50 @@
 const Purchase = require('./purchase.model');
+const Product = require('../products/product.model');
+const Account = require('../accounts/account.model');
+const mongoose = require('mongoose');
 const asyncHandler = require('../../middlewares/asyncHandler');
 
 const addPurchase = asyncHandler(async (req, res) => {
-    const body = req.body;
-    const newPurchase = await Purchase.create(body);
-    return res.status(201).json({ msg: 'Purchase made successfully', newPurchase });
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const body = req.body;
+        
+        // Create Purchase
+        const newPurchase = await Purchase.create([body], { session });
+
+        // Update Inventory for each product
+        if (body.products && Array.isArray(body.products)) {
+            for (const item of body.products) {
+                if (item._id) {
+                    await Product.findByIdAndUpdate(
+                        item._id,
+                        { $inc: { currentStock: Number(item.quantity) || 1 } },
+                        { session }
+                    );
+                }
+            }
+        }
+
+        // Update Account Balance if paid (money leaving)
+        if (body.paymentStatus === 'Paid' && body.accountId) {
+            await Account.findByIdAndUpdate(
+                body.accountId,
+                { $inc: { currentBalance: -(Number(body.total) || 0) } },
+                { session }
+            );
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+        return res.status(201).json({ msg: 'Purchase made successfully', newPurchase: newPurchase[0] });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("Purchase transaction failed: ", error);
+        return res.status(500).json({ msg: 'Failed to process purchase', error: error.message });
+    }
 });
 
 const showPurchase = asyncHandler(async (req, res) => {

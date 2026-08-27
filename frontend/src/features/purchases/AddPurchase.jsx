@@ -1,7 +1,9 @@
-import { useContext, useState } from 'react';
-import { ChevronDown, Trash2} from 'lucide-react';
+import { useContext, useEffect, useState } from 'react';
+import { ChevronDown, Trash2 } from 'lucide-react';
 import { ContextApi } from '../../core/ContextApi';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { CustomSelect } from '../../components/common/CustomSelect';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -15,12 +17,12 @@ const containerVariants = {
 };
 
 const uniformVariants = {
-  hidden: { 
+  hidden: {
     opacity: 0,
     scale: 0.95,
-    filter: "blur(2px)"    
+    filter: "blur(2px)"
   },
-  visible: { 
+  visible: {
     opacity: 1,
     scale: 1,
     filter: "blur(0px)",
@@ -38,15 +40,30 @@ const AddPurchase = () => {
     purchaseStatus: 'Received',
     orderTax: 0,
     discount: 0,
-    shippingCost:0,
+    shippingCost: 0,
     note: '',
   });
 
-  const { products, setProducts, customers } = useContext(ContextApi);
+  const { products: globalProducts, customers, setPurchases } = useContext(ContextApi);
   const [productSearch, setProductSearch] = useState('');
+  const [allProducts, setAllProducts] = useState([]);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products`, {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(res => res.json())
+    .then(data => setAllProducts(data))
+    .catch(err => console.error("Error fetching all products:", err));
+  }, []);
 
   const warehouses = ['Main Warehouse', 'Secondary Warehouse', 'Backup Warehouse'];
 
+  const purchaseStatusOptions = ['Received', 'Pending', 'Ordered'];
   const taxOptions = [
     { label: 'No Tax', value: 0 },
     { label: 'VAT 5%', value: 5 },
@@ -55,8 +72,8 @@ const AddPurchase = () => {
   ];
 
   const handleInputChange = (field, value) => {
-    const numericFields=['orderTax','discount','shippingCost'];
-    const processedValue  = numericFields.includes(field) ? Number(value) : value;
+    const numericFields = ['orderTax', 'discount', 'shippingCost'];
+    const processedValue = numericFields.includes(field) ? Number(value) : value;
 
     setFormData(prev => ({
       ...prev,
@@ -65,28 +82,71 @@ const AddPurchase = () => {
   };
 
   const addProduct = (product) => {
-    const quantity = parseFloat(product.alertQuantity) || 1;
-    const cost = parseFloat(product.productCost) || 0;
-    const discount = parseFloat(product.discount) || 0;
-    const tax = parseFloat(product.productTax) || 0;
+    // Find if the product already exists in the cart
+    const existingProduct = selectedProducts.find(p => p.productCode === product.productCode);
 
-    const subTotal = quantity * cost * (1 - discount / 100) + tax;
-
-    setProducts(prev => [...prev, { ...product, subTotal }]);
+    if (existingProduct) {
+        // If exists, just update the quantity
+        setSelectedProducts(prev => prev.map(p =>
+            p.productCode === product.productCode
+                ? { ...p, quantity: p.quantity + 1 }
+                : p
+        ));
+    } else {
+        // If new, add it to the products list with initial quantity
+        const newProduct = {
+            ...product,
+            _id: product._id, // Use the real database ID
+            quantity: 1,
+            discount: 0, // Individual product discount (if applicable)
+            tax: 0,      // Individual product tax (if applicable)
+            subTotal: (parseFloat(product.productCost) || 0) * 1,
+        };
+        setSelectedProducts(prev => [...prev, newProduct]);
+    }
+    setProductSearch('');
   };
 
-  const removeProduct = (id) => {
-    setProducts(prev => prev.filter(product => product.id !== id));
+  const updateProductDetails = (productId, field, value) => {
+    setSelectedProducts(prev => prev.map(p => {
+        if (p._id === productId) {
+            let updatedProduct = { ...p, [field]: parseFloat(value) || 0 };
+
+            // Recalculate subTotal based on updated values
+            const cost = parseFloat(updatedProduct.productCost) || 0;
+            const quantity = parseFloat(updatedProduct.quantity) || 0;
+            const taxRate = parseFloat(formData.orderTax) || 0;
+            const itemDiscount = parseFloat(updatedProduct.discount) || 0;
+
+            const priceAfterDiscount = (cost * quantity) - itemDiscount;
+            const taxAmount = priceAfterDiscount * (taxRate / 100);
+            const newSubTotal = priceAfterDiscount + taxAmount;
+
+            return { ...updatedProduct, subTotal: newSubTotal };
+        }
+        return p;
+    }));
   };
 
-  const calculateTotal = () => {
-    const productTotal = products.reduce((sum, product) => sum + (parseFloat(product.subTotal) || 0), 0);
-    const shippingCost = parseFloat(formData.shippingCost) || 0;
-    const discount = parseFloat(formData.discount) || 0;
-    return productTotal + shippingCost - discount;
+  const removeProduct = (idToRemove) => {
+      setSelectedProducts(prev => prev.filter(product => product._id !== idToRemove));
   };
 
-  const handleSubmit = async () => {
+  const calculateGrandTotal = () => {
+      const productTotal = (selectedProducts || []).reduce((sum, product) => sum + (parseFloat(product.subTotal) || 0), 0);
+      const orderDiscount = parseFloat(formData.discount) || 0;
+      const shippingCost = parseFloat(formData.shippingCost) || 0;
+      const orderTaxRate = parseFloat(formData.orderTax) || 0;
+
+      const totalBeforeTax = productTotal - orderDiscount + shippingCost;
+      const taxAmount = totalBeforeTax * (orderTaxRate / 100);
+
+      return totalBeforeTax + taxAmount;
+  };
+
+  const handleSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+
     if (!formData.warehouse) {
       alert('Please select a warehouse');
       return;
@@ -94,44 +154,76 @@ const AddPurchase = () => {
 
     const submissionData = {
       ...formData,
-      products,
-      total: calculateTotal()
+      products: selectedProducts.map(({ _id, ...product }) => ({ ...product, tax: formData.orderTax, discount: formData.discount, subTotal: calculateSubTotalForProduct(product) })),
+      total: calculateGrandTotal()
     };
 
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-type': 'application/json',
-          'Authorization':`Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body : JSON.stringify(submissionData)
+        body: JSON.stringify(submissionData)
       });
 
+      if (!res.ok) {
+        throw new Error('Failed to create purchase.');
+      }
+
       const data = await res.json();
+      const newPurchase = data.newPurchase || data;
+      if (setPurchases && newPurchase && newPurchase._id) {
+          setPurchases(prev => [...prev, newPurchase]);
+      }
+      
+      alert('Purchase order submitted successfully!');
+      navigate('/purchase/list');
 
     } catch (err) {
+      console.error('Error submitting form:', err);
+      alert('Error submitting purchase order');
     }
-
-    alert('Purchase order submitted successfully!');
   };
 
+  const calculateSubTotalForProduct = (product) => {
+    const cost = parseFloat(product.productCost) || 0;
+    const quantity = parseFloat(product.quantity) || 0;
+    const orderTaxRate = parseFloat(formData.orderTax) || 0;
+    const orderDiscount = parseFloat(formData.discount) || 0;
+
+    const totalCost = cost * quantity;
+    const discountAmount = totalCost * (orderDiscount / 100);
+    const subtotalBeforeTax = totalCost - discountAmount;
+    const taxAmount = subtotalBeforeTax * (orderTaxRate / 100);
+
+    return subtotalBeforeTax + taxAmount;
+  };
+
+  const filteredProducts = allProducts.filter(p =>
+      productSearch.trim() !== '' && (
+          p.productCode.toLowerCase().includes(productSearch.toLowerCase()) ||
+          p.productName.toLowerCase().includes(productSearch.toLowerCase())
+      )
+  );
+
   return (
-    <motion.div 
-      className='p-6'
+    <motion.div
+      className='p-7'
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      <motion.div 
+      <motion.div
         className="p-6 bg-white rounded-lg shadow-sm"
         variants={uniformVariants}
       >
         <h1 className="text-2xl font-semibold text-gray-900 mb-6">Add Purchase</h1>
 
-        <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <p className="text-sm text-gray-500 italic">
-            The field labels marked with * are required input fields.
+            The field labels marked with <span className="text-red-500">*</span> are required input fields.
           </p>
 
           {/* First Row */}
@@ -140,39 +232,26 @@ const AddPurchase = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Warehouse <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <select
-                  value={formData.warehouse}
-                  onChange={(e) => handleInputChange('warehouse', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                  required
-                >
-                  <option value="">Select warehouse...</option>
-                  {warehouses.map(warehouse => (
-                    <option key={warehouse} value={warehouse}>{warehouse}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
-              </div>
+              <CustomSelect
+                name="warehouse"
+                value={formData.warehouse}
+                onChange={handleInputChange}
+                options={warehouses}
+                placeholder="Select warehouse..."
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Supplier
               </label>
-              <div className="relative">
-                <select
-                  value={formData.supplier}
-                  onChange={(e) => handleInputChange('supplier', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                >
-                  <option value="">Select supplier...</option>
-                  {customers.map(cus => (
-                    <option key={cus.id} value={cus.name}>{cus.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
-              </div>
+              <CustomSelect
+                name="supplier"
+                value={formData.supplier}
+                onChange={handleInputChange}
+                options={customers.map(c => c.name)}
+                placeholder="Select supplier..."
+              />
             </div>
           </div>
 
@@ -182,129 +261,98 @@ const AddPurchase = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Purchase Status
               </label>
-              <div className="relative">
-                <select
-                  value={formData.purchaseStatus}
-                  onChange={(e) => handleInputChange('purchaseStatus', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                >
-                  <option value="Received">Received</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Ordered">Ordered</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
-              </div>
+              <CustomSelect
+                name="purchaseStatus"
+                value={formData.purchaseStatus}
+                onChange={handleInputChange}
+                options={purchaseStatusOptions}
+              />
             </div>
           </div>
 
           {/* Product Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Product
-            </label>
-            <div className="md:flex flex-wrap items-center space-x-2">
-              
-              <input
-                type="text"
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Please type product code and select..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <button
-                onClick={() => {
-                  const foundProduct = products.find(p =>
-                    p.productName.toLowerCase().includes(productSearch.toLocaleLowerCase())
-                  );
-                  if (foundProduct) {
-                    addProduct(foundProduct);
-                    setProductSearch('');
-                  }
-                }}
-                type="button"
-                className="px-4 py-2 md:m-t0 mt-2 bg-purple-500 font-bold text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
-              >
-                Add
-              </button>
-            </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Product
+              </label>
+              <div className="relative">
+                  <input
+                      type="text"
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      placeholder="Type product name or code..."
+                      className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-400">📦</span>
+                  </span>
+                  {productSearch && filteredProducts.length > 0 && (
+                      <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          {filteredProducts.map((product) => (
+                              <li
+                                  key={product._id}
+                                  onClick={() => addProduct(product)}
+                                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                              >
+                                  {product.productName} ({product.productCode})
+                              </li>
+                          ))}
+                      </ul>
+                  )}
+              </div>
           </div>
 
           {/* Order Table */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Order Table <span className="text-red-500">*</span>
-            </label>
-            <div className="overflow-x-auto border border-gray-300 rounded-md">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Name</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Code</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Quantity</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Net Unit Cost</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Discount</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tax</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">SubTotal</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {(products||[]).filter((product) => {
-                    return productSearch.trim() !== '' && product.productName.toLowerCase().includes(productSearch.toLowerCase());
-                  }).map((product) => (
-                    <tr key={product._id}>
-                      <td className="px-4 py-3">
-                        <span className="block px-2 py-1 text-gray-900">{product.productName}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="block px-2 py-1 text-gray-900">{product.productCode}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="block px-2 py-1 text-gray-900">{product.alertQuantity}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="block px-2 py-1 text-gray-900">{product.productCost}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="block px-2 py-1 text-gray-900">{product.discount}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="block px-2 py-1 text-gray-900">{product.productTax}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-medium text-gray-900">
-                          {product.subTotal ? product.subTotal.toFixed(2) : '0.00'}
-                        </span>
-                      </td>
-                      <td className="px-2">
-                        <div onClick={removeProduct} className='flex gap-1 py-1 justify-center rounded items-center bg-red-400'>
-                          <button> Delete </button>
-                          <span> <Trash2 className="w-4 h-4" /></span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-
-                  <tr className="bg-gray-50 font-medium">
-                    <td className="px-4 py-3 text-sm text-gray-900">Total</td>
-                    <td className="px-4 py-3"></td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {products.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)}
-                    </td>
-                    <td className="px-4 py-3"></td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {products.reduce((sum, p) => sum + (parseFloat(p.discount) || 0), 0).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {products.reduce((sum, p) => sum + (parseFloat(p.tax) || 0), 0).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {products.reduce((sum, p) => sum + (parseFloat(p.subTotal) || 0), 0).toFixed(2)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Order Table <span className="text-red-500">*</span>
+              </label>
+              <div className="overflow-x-auto border border-gray-300 rounded-md">
+                  <table className="w-full">
+                      <thead className="bg-gray-50">
+                          <tr>
+                              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Code</th>
+                              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Quantity</th>
+                              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Net Unit Cost</th>
+                              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">SubTotal</th>
+                              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700"></th>
+                          </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                          {(selectedProducts || []).map((product) => (
+                              <tr key={product._id}>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{product.productName}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{product.productCode}</td>
+                                  <td className="px-4 py-3">
+                                      <input
+                                          type="number"
+                                          value={product.quantity}
+                                          onChange={(e) => updateProductDetails(product._id, 'quantity', e.target.value)}
+                                          className="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                          min="1"
+                                      />
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{product.productCost}</td>
+                                  <td className="px-4 py-3">
+                                      <span className="font-medium text-sm text-gray-900">
+                                          {calculateSubTotalForProduct(product).toFixed(2)}
+                                      </span>
+                                  </td>
+                                  <td className="px-2">
+                                      <button
+                                          type="button"
+                                          onClick={() => removeProduct(product._id)}
+                                          className='flex items-center gap-1 py-1 px-2 rounded bg-red-400 text-white hover:bg-red-500 text-sm'
+                                      >
+                                          Delete <Trash2 className="w-4 h-4" />
+                                      </button>
+                                  </td>
+                              </tr>
+                          ))}
+                      </tbody>
+                  </table>
+              </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -312,18 +360,15 @@ const AddPurchase = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Order Tax
               </label>
-              <div className="relative">
-                <select
-                  value={formData.orderTax}
-                  onChange={(e) => handleInputChange('orderTax', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                >
-                  {taxOptions.map(tax => (
-                    <option key={tax.label} value={tax.value}>{tax.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
-              </div>
+              <CustomSelect
+                name="orderTax"
+                value={taxOptions.find(t => t.value === formData.orderTax)?.label || 'No Tax'}
+                onChange={(name, label) => {
+                  const opt = taxOptions.find(t => t.label === label);
+                  if(opt) handleInputChange('orderTax', opt.value);
+                }}
+                options={taxOptions.map(t => t.label)}
+              />
             </div>
 
             <div>
@@ -334,7 +379,7 @@ const AddPurchase = () => {
                 type="number"
                 value={formData.discount}
                 onChange={(e) => handleInputChange('discount', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="0"
                 step="0.01"
               />
@@ -348,7 +393,7 @@ const AddPurchase = () => {
                 type="number"
                 value={formData.shippingCost}
                 onChange={(e) => handleInputChange('shippingCost', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="0"
                 step="0.01"
               />
@@ -363,29 +408,30 @@ const AddPurchase = () => {
               value={formData.note}
               onChange={(e) => handleInputChange('note', e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter any additional notes..."
             />
           </div>
 
-          <div className="flex justify-start">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="px-6 py-2 bg-purple-500 text-white font-medium rounded-md hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors"
+          <motion.div className="flex justify-start mt-6" variants={uniformVariants}>
+            <motion.button
+              type="submit"
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition duration-200"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               Submit
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
 
           <div className="mt-6 p-4 bg-gray-50 rounded-md">
             <div className="text-right">
               <span className="text-lg font-semibold text-gray-900">
-                Grand Total: ${calculateTotal().toFixed(2)}
+                Grand Total: ${calculateGrandTotal().toFixed(2)}
               </span>
             </div>
           </div>
-        </div>
+        </form>
       </motion.div>
     </motion.div>
   );
