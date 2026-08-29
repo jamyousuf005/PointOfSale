@@ -16,14 +16,25 @@ const addSaleReturn = asyncHandler(async (req, res) => {
         // Update Inventory for each product (increase stock)
         if (body.products && Array.isArray(body.products)) {
             for (const item of body.products) {
-                if (item._id) {
+                const productId = item.productId || item._id;
+                if (productId) {
                     await Product.findByIdAndUpdate(
-                        item._id,
+                        productId,
                         { $inc: { currentStock: (Number(item.quantity) || 1) } },
                         { session }
                     );
                 }
             }
+        }
+
+        // Deduct money from Account (Refund)
+        // Ensure you pass accountId from frontend when making a return
+        if (body.accountId) {
+            await Account.findByIdAndUpdate(
+                body.accountId,
+                { $inc: { currentBalance: -(Number(body.totalRefundAmount) || 0) } },
+                { session }
+            );
         }
 
         await session.commitTransaction();

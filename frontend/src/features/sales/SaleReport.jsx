@@ -35,16 +35,20 @@ const SaleReport = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [recordsPerPage, setRecordsPerPage] = useState('10');
   const [selectedItems, setSelectedItems] = useState(new Set());
+  const [saleData, setSaleData] = useState([]);
 
-  const saleData = [
-    {
-      id: 1,
-      name: 'Dell 3330',
-      soldAmount: 22000.00,
-      soldQty: 1,
-      inStock: 6
-    }
-  ];
+  React.useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reports/products`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setSaleData(data);
+      })
+      .catch(err => console.error("Error fetching sale report:", err));
+  }, []);
 
   const handleSelectAll = (checked) => {
     if (checked) {
@@ -200,10 +204,18 @@ const SaleReport = () => {
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
-                  <td className="px-6 py-4 text-sm text-blue-600 hover:text-blue-800 cursor-pointer">{item.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{item.soldAmount.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{item.soldQty}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{item.inStock}</td>
+                  <td className="px-6 py-4 text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
+                    {item.name}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-semibold text-green-600">
+                    ${item.soldAmount?.toLocaleString() || '0'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {item.soldQty?.toLocaleString() || 0}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {item.inStock?.toLocaleString() || 0}
+                  </td>
                 </tr>
               ))}
               <tr className="bg-gray-50 font-medium">

@@ -77,18 +77,29 @@ const EditPurchases = () => {
             })
             .catch(err => console.error("Error fetching purchase:", err));
         }
-
-        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        })
-        .then(res => res.json())
-        .then(data => setAllProducts(data))
-        .catch(err => console.error("Error fetching all products:", err));
     }, [id]);
 
-    const warehouses = ['Main Warehouse', 'Secondary Warehouse', 'Backup Warehouse'];
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products`,{
+        headers:{
+            'Authorization':`Bearer ${localStorage.getItem('token')}`
+        }
+    })
+      .then(res => res.json())
+      .then(data => setAllProducts(data))
+      .catch(err => console.error("Error fetching all products:", err));
+
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/warehouses`, {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(res => res.json())
+    .then(data => setWarehouses(data.map(w => w.name)))
+    .catch(err => console.error("Error fetching warehouses:", err));
+  }, []);
+
+  const [warehouses, setWarehouses] = useState([]);
     const purchaseStatusOptions = ['Received', 'Pending', 'Ordered'];
     const taxOptions = [
         { label: 'No Tax', value: 0 },
@@ -228,6 +239,63 @@ const EditPurchases = () => {
         return subtotalBeforeTax + taxAmount;
     };
 
+    const handleCSVUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const csvData = event.target.result;
+            const lines = csvData.split('\n');
+            
+            const newSelectedProducts = [...selectedProducts];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const [productCode, qty, cost] = line.split(',');
+                
+                const matchedProduct = allProducts.find(p => p.productCode === productCode?.trim());
+                if (!matchedProduct) continue; // Ignore if product code is invalid
+                
+                const quantity = Number(qty) || 1;
+                const productCost = Number(cost) || matchedProduct.productCost;
+                
+                const existingIndex = newSelectedProducts.findIndex(p => p.productCode === matchedProduct.productCode);
+                if (existingIndex !== -1) {
+                    newSelectedProducts[existingIndex].quantity += quantity;
+                    newSelectedProducts[existingIndex].subTotal = newSelectedProducts[existingIndex].quantity * newSelectedProducts[existingIndex].productCost;
+                } else {
+                    newSelectedProducts.push({
+                        ...matchedProduct,
+                        _id: matchedProduct._id,
+                        quantity: quantity,
+                        productCost: productCost,
+                        discount: 0,
+                        tax: 0,
+                        subTotal: productCost * quantity
+                    });
+                }
+            }
+            
+            setSelectedProducts(newSelectedProducts);
+            e.target.value = ''; // reset file input
+        };
+        reader.readAsText(file);
+    };
+
+    const downloadCSVTemplate = () => {
+        const csvContent = "data:text/csv;charset=utf-8,productCode,quantity,cost\n";
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "purchase_template.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const filteredProducts = allProducts.filter(p =>
         productSearch.trim() !== '' && (
             p.productCode.toLowerCase().includes(productSearch.toLowerCase()) ||
@@ -296,30 +364,52 @@ const EditPurchases = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Select Product
                         </label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                value={productSearch}
-                                onChange={(e) => setProductSearch(e.target.value)}
-                                placeholder="Type product name or code..."
-                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
-                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <span className="text-gray-400">📦</span>
-                            </span>
-                            {productSearch && filteredProducts.length > 0 && (
-                                <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                    {filteredProducts.map((product) => (
-                                        <li
-                                            key={product._id}
-                                            onClick={() => addProduct(product)}
-                                            className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                        >
-                                            {product.productName} ({product.productCode})
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
+                        <div className="flex gap-4 items-center">
+                            <div className="relative flex-1">
+                                <input
+                                    type="text"
+                                    value={productSearch}
+                                    onChange={(e) => setProductSearch(e.target.value)}
+                                    placeholder="Type product name or code..."
+                                    className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span className="text-gray-400">📦</span>
+                                </span>
+                                {productSearch && filteredProducts.length > 0 && (
+                                    <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                        {filteredProducts.map((product) => (
+                                            <li
+                                                key={product._id}
+                                                onClick={() => addProduct(product)}
+                                                className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                                            >
+                                                {product.productName} ({product.productCode})
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                            
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={downloadCSVTemplate}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                    Download Template
+                                </button>
+                                
+                                <label className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
+                                    Import CSV
+                                    <input
+                                        type="file"
+                                        accept=".csv"
+                                        className="hidden"
+                                        onChange={handleCSVUpload}
+                                    />
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div>

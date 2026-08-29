@@ -44,11 +44,12 @@ const AddSale = () => {
     shippingCost: 0,
     saleStatus: "Completed",
     paymentStatus: "Pending",
+    accountId: "",
     saleNote: "",
     staffNote: "",
   });
 
-  const { products, customers, setSales } = useContext(ContextApi);
+  const { products: allProducts, customers, setSales, accounts } = useContext(ContextApi);
   const [productSearch, setProductSearch] = useState('');
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [quantities, setQuantities] = useState({});
@@ -98,6 +99,59 @@ const AddSale = () => {
     return selectedProducts.length;
   };
 
+  const handleCSVUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const csvData = event.target.result;
+      const lines = csvData.split('\n');
+      
+      const newSelected = [...selectedProducts];
+      const newQuantities = { ...quantities };
+      
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // Format: product_code, quantity, price
+        const [productCode, qty, priceStr] = line.split(',');
+        
+        const matchedProduct = allProducts.find(p => p.productCode === productCode?.trim());
+        if (!matchedProduct) continue; 
+        
+        const quantity = Number(qty) || 1;
+        const price = Number(priceStr) || matchedProduct.productPrice;
+        
+        const existingIndex = newSelected.findIndex(p => p.productCode === matchedProduct.productCode);
+        if (existingIndex !== -1) {
+            newQuantities[matchedProduct._id] = (newQuantities[matchedProduct._id] || 0) + quantity;
+        } else {
+            const productToAdd = { ...matchedProduct, productPrice: price };
+            newSelected.push(productToAdd);
+            newQuantities[matchedProduct._id] = quantity;
+        }
+      }
+      
+      setSelectedProducts(newSelected);
+      setQuantities(newQuantities);
+    };
+    reader.readAsText(file);
+    e.target.value = null; 
+  };
+
+  const handleDownloadTemplate = () => {
+    const template = 'product_code,quantity,price\nPROD001,5,150.00\nPROD002,10,25.50';
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sale_import_template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const calculateSubtotal = (product) => {
     const quantity = quantities[product._id] || 0;
     const price = product.productPrice || 0;
@@ -130,14 +184,23 @@ const AddSale = () => {
       return;
     }
 
+    if (formData.paymentStatus === 'Paid' && !formData.accountId) {
+      setNotification({ message: 'Please select an account for the paid sale.', type: 'error' });
+      return;
+    }
+
     try {
       const saleData = {
         ...formData,
         products: selectedProducts.map(p => ({
-          _id: p._id,
+          productId: p._id,
+          productCode: p.productCode,
           productName: p.productName,
-          quantity: quantities[p._id],
+          quantity: quantities[p._id] || 1,
+          productCost: p.productCost || 0,
           unitPrice: p.productPrice,
+          tax: 0,
+          discount: 0,
           subTotal: calculateSubtotal(p),
         })),
         totalAmount: calculateGrandTotal(),
@@ -168,6 +231,7 @@ const AddSale = () => {
           shippingCost: 0,
           saleStatus: "Completed",
           paymentStatus: "Pending",
+          accountId: "",
           saleNote: "",
           staffNote: "",
         });
@@ -277,10 +341,53 @@ const AddSale = () => {
                 options={['Pending', 'Due', 'Paid']}
               />
             </div>
+            {formData.paymentStatus === 'Paid' && (
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Account <span className="text-red-500">*</span>
+                </label>
+                <CustomSelect
+                  name="accountId"
+                  value={accounts.find(a => a._id === formData.accountId)?.accountName || ""}
+                  onChange={(name, label) => {
+                    const opt = accounts.find(a => a.accountName === label);
+                    if(opt) handleInputChange('accountId', opt._id);
+                  }}
+                  options={accounts.map(a => a.accountName)}
+                  placeholder="Select Account..."
+                />
+              </div>
+            )}
           </div>
 
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">Select Product</label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-sm font-medium text-gray-700">Select Product</label>
+              <div className="flex gap-2">
+                <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md font-medium border border-gray-300 transition-colors"
+                >
+                    Download Template
+                </button>
+                <div className="relative">
+                    <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleCSVUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        id="csv-upload"
+                    />
+                    <label 
+                        htmlFor="csv-upload"
+                        className="text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-1.5 rounded-md font-medium border border-purple-200 transition-colors cursor-pointer inline-block"
+                    >
+                        Import CSV
+                    </label>
+                </div>
+              </div>
+            </div>
             <div className="flex items-center border border-gray-300 rounded-md bg-gray-50">
               <div className="px-3 py-2 border-r">
                 <span className="text-gray-400">📦</span>

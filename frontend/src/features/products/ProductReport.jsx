@@ -35,19 +35,20 @@ const ProductReport = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [recordsPerPage, setRecordsPerPage] = useState('10');
   const [selectedItems, setSelectedItems] = useState(new Set());
+  const [productData, setProductData] = useState([]);
 
-  const productData = [
-    {
-      id: 1,
-      name: 'Dell 3330',
-      purchasedAmount: 154000.00,
-      purchasedQty: 7,
-      soldAmount: 22000.00,
-      soldQty: 1,
-      profit: 0.00,
-      inStock: 6
-    }
-  ];
+  React.useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reports/products`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setProductData(data);
+      })
+      .catch(err => console.error("Error fetching product report:", err));
+  }, []);
 
   const handleSelectAll = (checked) => {
     if (checked) {
@@ -208,8 +209,8 @@ const ProductReport = () => {
                       <div className="font-medium">${item.soldAmount.toFixed(2)} (Qty: {item.soldQty})</div>
                     </div>
                     <div>
-                      <span className="text-gray-500">Profit:</span>
-                      <div className="font-medium">${item.profit.toFixed(2)}</div>
+                      <span className="text-gray-500">Purchased Qty:</span>
+                      <div className="font-medium text-xs">{item.purchasedQty?.toLocaleString() || 0}</div>
                     </div>
                   </div>
                 </div>
@@ -302,35 +303,34 @@ const ProductReport = () => {
                         {item.soldQty}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {item.profit.toFixed(2)}
+                        ${item.profit?.toLocaleString() || '0'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {item.inStock}
+                        {item.inStock?.toLocaleString() || 0}
                       </td>
                     </tr>
                   ))}
 
                   {/* Total Row */}
                   <tr className="bg-gray-50 font-medium">
-                    <td className="px-6 py-4"></td>
-                    <td className="px-6 py-4 text-sm text-gray-900">Total</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {totals.purchasedAmount.toFixed(2)}
+                    <td colSpan="2" className="px-6 py-4 text-sm text-gray-900">Total</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-blue-600">
+                      ${totals.purchasedAmount.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {totals.purchasedQty}
+                      {totals.purchasedQty.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-green-600">
+                      ${totals.soldAmount.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {totals.soldAmount.toFixed(2)}
+                      {totals.soldQty.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-purple-600">
+                      ${totals.profit.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {totals.soldQty}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {totals.profit.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {totals.inStock}
+                      {totals.inStock.toLocaleString()}
                     </td>
                   </tr>
                 </tbody>

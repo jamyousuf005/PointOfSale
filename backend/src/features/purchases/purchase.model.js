@@ -34,10 +34,17 @@ const addPurchase = new mongoose.Schema({
         type: String
     },
     products: [{
+        productId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Product'
+        },
         productName: String,
         productCode: String,
         alertQuantity: Number,
         productCost: Number,
+        quantity: Number,
+        discount: Number,
+        tax: Number,
         subTotal: Number,
     }],
     total: {

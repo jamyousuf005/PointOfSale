@@ -35,16 +35,20 @@ const PurchaseReport = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [recordsPerPage, setRecordsPerPage] = useState('10');
   const [selectedItems, setSelectedItems] = useState(new Set());
+  const [productData, setProductData] = useState([]);
 
-  const productData = [
-    {
-      id: 1,
-      name: 'Dell 3330',
-      purchasedAmount: 154000.00,
-      purchasedQty: 7,
-      inStock: 6
-    }
-  ];
+  React.useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reports/products`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setProductData(data);
+      })
+      .catch(err => console.error("Error fetching purchase report:", err));
+  }, []);
 
   const handleSelectAll = (checked) => {
     if (checked) {
@@ -259,29 +263,28 @@ const PurchaseReport = () => {
                         {item.name}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {item.purchasedAmount.toFixed(2)}
+                        ${item.purchasedAmount?.toLocaleString() || '0'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {item.purchasedQty}
+                        {item.purchasedQty?.toLocaleString() || 0}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {item.inStock}
+                        {item.inStock?.toLocaleString() || 0}
                       </td>
                     </tr>
                   ))}
 
                   {/* Total Row */}
                   <tr className="bg-gray-50 font-medium">
-                    <td className="px-6 py-4"></td>
-                    <td className="px-6 py-4 text-sm text-gray-900">Total</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {totals.purchasedAmount.toFixed(2)}
+                    <td colSpan="2" className="px-6 py-4 text-sm text-gray-900">Total</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-blue-600">
+                      ${totals.purchasedAmount.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {totals.purchasedQty}
+                      {totals.purchasedQty.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {totals.inStock}
+                      {totals.inStock.toLocaleString()}
                     </td>
                   </tr>
                 </tbody>

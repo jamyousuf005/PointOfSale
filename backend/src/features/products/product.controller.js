@@ -21,13 +21,30 @@ const parseProductData = (req) => {
     if (typeof data.variantList === 'string') {
         try { data.variantList = JSON.parse(data.variantList); } catch(e){}
     }
+    
+    if (data.hasPromotion) {
+        if (typeof data.promotionStart === 'string' && data.promotionStart !== '') data.promotionStart = new Date(data.promotionStart);
+        if (typeof data.promotionEnd === 'string' && data.promotionEnd !== '') data.promotionEnd = new Date(data.promotionEnd);
+    }
+    
+    if (data.hasPromotion && data.promotionPrice >= data.productPrice) {
+        throw new Error("Promotional price must be less than the regular product price.");
+    }
     return data;
 };
 
 const addProducts = asyncHandler(async (req, res) => {
-    const productData = parseProductData(req);
-    const newProduct = await Product.create(productData);
-    return res.status(201).json({ msg: "product added", newProduct });
+    try {
+        const productData = parseProductData(req);
+        const newProduct = await Product.create(productData);
+        return res.status(201).json({ msg: "product added", newProduct });
+    } catch (error) {
+        if (error.code === 11000) {
+            res.status(400);
+            throw new Error(`Product Code already exists: ${req.body.productCode}`);
+        }
+        throw error;
+    }
 });
 
 const deleteProduct = asyncHandler(async (req, res) => {
@@ -37,10 +54,18 @@ const deleteProduct = asyncHandler(async (req, res) => {
 });
 
 const editProduct = asyncHandler(async (req, res) => {
-    const editById = req.params.id;
-    const productData = parseProductData(req);
-    const edited = await Product.findByIdAndUpdate(editById, productData, { new: true });
-    return res.json({ msg: "product being updated", edited });
+    try {
+        const editById = req.params.id;
+        const productData = parseProductData(req);
+        const edited = await Product.findByIdAndUpdate(editById, productData, { new: true });
+        return res.json({ msg: "product being updated", edited });
+    } catch (error) {
+        if (error.code === 11000) {
+            res.status(400);
+            throw new Error(`Product Code already exists: ${req.body.productCode}`);
+        }
+        throw error;
+    }
 });
 
 const showProducts = asyncHandler(async (req, res) => {

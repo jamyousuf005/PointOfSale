@@ -9,7 +9,15 @@ const saleReturnSchema = new mongoose.Schema({
     customer: {
         type: String,
     },
+    accountId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Account'
+    },
     products: [{
+        productId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Product'
+        },
         productName: String,
         productCode: String,
         quantity: Number,

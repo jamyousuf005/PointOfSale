@@ -33,19 +33,20 @@ const PaymentReport = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [recordsPerPage, setRecordsPerPage] = useState('10');
   const [selectedItems, setSelectedItems] = useState(new Set());
+  const [paymentData, setPaymentData] = useState([]);
 
-  const paymentData = [
-    {
-      id: 1,
-      date: '27-06-2025 10:30:20',
-      paymentReference: 'spr-20250627-103020',
-      saleReference: 'posr-20250627-103020',
-      purchaseReference: '',
-      paidBy: 'Cash',
-      amount: 21000,
-      createdBy: 'Admin admin@orasoft.pk'
-    }
-  ];
+  React.useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reports/payments`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setPaymentData(data);
+      })
+      .catch(err => console.error("Error fetching payment report:", err));
+  }, []);
 
   const handleSelectAll = (checked) => {
     if (checked) {
@@ -184,9 +185,9 @@ const PaymentReport = () => {
                         onChange={(e) => handleSelectItem(item.id, e.target.checked)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="font-medium text-blue-600">{item.date}</span>
+                      <span className="font-medium text-blue-600">{new Date(item.date).toLocaleDateString()}</span>
                     </div>
-                    <span className="text-sm font-semibold text-green-600">${item.amount.toLocaleString()}</span>
+                    <span className="text-sm font-semibold text-green-600">${item.amount?.toLocaleString()}</span>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2 text-sm">
@@ -268,13 +269,13 @@ const PaymentReport = () => {
                         />
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {item.date}
+                        {new Date(item.date).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
                         {item.paymentReference}
                       </td>
                       <td className="px-6 py-4 text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
-                        {item.saleReference}
+                        {item.saleReference || '-'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {item.purchaseReference || '-'}
@@ -282,8 +283,8 @@ const PaymentReport = () => {
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {item.paidBy}
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-green-600">
-                        ${item.amount.toLocaleString()}
+                      <td className={`px-6 py-4 text-sm font-semibold ${item.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        ${item.amount?.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {item.createdBy}

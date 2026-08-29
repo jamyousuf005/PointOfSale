@@ -39,8 +39,9 @@ const uniformVariants = {
 };
 
 const POS = () => {
-  const { laptop } = useContext(ContextApi);
+  const { laptop, accounts } = useContext(ContextApi);
   const [selectedCustomer, setSelectedCustomer] = useState('Select customer...');
+  const [selectedAccount, setSelectedAccount] = useState('');
   const [searchProduct, setSearchProduct] = useState('');
   const [activeTab, setActiveTab] = useState('Category');
   const [cartItems, setCartItems] = useState([]);
@@ -195,6 +196,14 @@ const POS = () => {
                   >
                     <option>Select customer...</option>
                     {customers.map((customer) => <option key={customer.id}> {customer.name} </option>)}
+                  </select>
+                  <select 
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 max-w-44"
+                    value={selectedAccount}
+                    onChange={(e) => setSelectedAccount(e.target.value)}
+                  >
+                    <option value="">Select account...</option>
+                    {accounts?.map((acc) => <option key={acc._id} value={acc._id}>{acc.accountName}</option>)}
                   </select>
                   <button className="p-2 mb-2 border border-gray-300 rounded-md hover:bg-gray-50 flex-shrink-0">
                     <Plus className="h-4 w-4" />

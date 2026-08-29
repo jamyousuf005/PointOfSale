@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ContextApi } from '../../core/ContextApi';
 import { motion } from 'framer-motion';
 import { CustomSelect } from '../../components/common/CustomSelect';
+import { toast } from 'react-toastify';
 
 // Define the animation variants for the outer container.
 const containerVariants = {
@@ -72,6 +73,21 @@ export default function EditProduct() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  const [categoryOptions, setCategoryOptions] = useState([]);
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001'}/api/categories`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (Array.isArray(data)) {
+        setCategoryOptions(data.map(cat => cat.categoryName));
+      }
+    })
+    .catch(err => console.error('Failed to fetch categories', err));
+  }, []);
+
   useEffect(() => {
     if (id) {
       fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products/${id}`,{
@@ -109,6 +125,7 @@ export default function EditProduct() {
 
     const formDataToSend = new FormData();
     for (const key in formData) {
+      if (key === 'image') continue; // Handled separately
       if (formData[key] !== null && formData[key] !== undefined && formData[key] !== '') {
         if (typeof formData[key] === 'object') {
           formDataToSend.append(key, JSON.stringify(formData[key]));
@@ -132,14 +149,15 @@ export default function EditProduct() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to update product');
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to update product');
       }
 
-      alert('Product updated successfully!');
+      toast.success('Product updated successfully!');
       navigate('/product/list');
     } catch (err) {
       console.error('Error:', err);
-      alert('Error updating product');
+      toast.error(err.message || 'Error updating product');
     }
   };
 
@@ -260,13 +278,11 @@ export default function EditProduct() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category <span className="text-red-500">*</span>
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
               <CustomSelect
                 value={formData.category}
                 onChange={handleInputChange}
-                options={['Electronics', 'Clothing', 'Food', 'Books']}
+                options={categoryOptions}
                 placeholder="Select Category..."
                 name="category"
                 required

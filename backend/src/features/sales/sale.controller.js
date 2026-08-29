@@ -24,11 +24,13 @@ const addSale = asyncHandler(async (req, res) => {
         const newSale = await Sale.create([body], { session });
 
         // Update Inventory for each product (decrease stock)
-        if (body.products && Array.isArray(body.products)) {
+        // Only if saleStatus is 'Completed'
+        if (body.saleStatus === 'Completed' && body.products && Array.isArray(body.products)) {
             for (const item of body.products) {
-                if (item._id) {
+                const productId = item.productId || item._id; // fallback to _id if productId isn't passed
+                if (productId) {
                     await Product.findByIdAndUpdate(
-                        item._id,
+                        productId,
                         { $inc: { currentStock: -(Number(item.quantity) || 1) } },
                         { session }
                     );
@@ -62,9 +64,53 @@ const showSales = asyncHandler(async (req, res) => {
 });
 
 const deleteSale = asyncHandler(async (req, res) => {
-    const id = req.params.id;
-    await Sale.findByIdAndDelete(id);
-    return res.json({ msg: 'deleted' });
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const id = req.params.id;
+        const sale = await Sale.findById(id).session(session);
+
+        if (!sale) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ msg: "Sale not found" });
+        }
+
+        // Reverse stock if it was completed (add stock back)
+        if (sale.saleStatus === 'Completed' && sale.products && Array.isArray(sale.products)) {
+            for (const item of sale.products) {
+                const productId = item.productId || item._id;
+                if (productId) {
+                    await Product.findByIdAndUpdate(
+                        productId,
+                        { $inc: { currentStock: (Number(item.quantity) || 1) } },
+                        { session }
+                    );
+                }
+            }
+        }
+
+        // Reverse account balance if it was paid (deduct money)
+        if (sale.paymentStatus === 'Paid' && sale.accountId) {
+            await Account.findByIdAndUpdate(
+                sale.accountId,
+                { $inc: { currentBalance: -(Number(sale.totalAmount) || 0) } },
+                { session }
+            );
+        }
+
+        await Sale.findByIdAndDelete(id).session(session);
+
+        await session.commitTransaction();
+        session.endSession();
+        return res.json({ msg: 'deleted' });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("Sale delete failed: ", error);
+        return res.status(500).json({ msg: 'Failed to process sale deletion', error: error.message });
+    }
 });
 
 const showOne = asyncHandler(async (req, res) => {
@@ -78,9 +124,77 @@ const showOne = asyncHandler(async (req, res) => {
 });
 
 const editSale = asyncHandler(async (req, res) => {
-    const id = req.params.id;
-    await Sale.findByIdAndUpdate(id, req.body, { new: true });
-    return res.json({ msg: "updated the sale" });
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const id = req.params.id;
+        const newBody = req.body;
+        
+        const oldSale = await Sale.findById(id).session(session);
+        if (!oldSale) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ msg: "Sale not found" });
+        }
+
+        // Step 1: Revert old inventory if it was Completed
+        if (oldSale.saleStatus === 'Completed' && oldSale.products) {
+            for (const item of oldSale.products) {
+                const productId = item.productId || item._id;
+                if (productId) {
+                    await Product.findByIdAndUpdate(
+                        productId,
+                        { $inc: { currentStock: (Number(item.quantity) || 1) } },
+                        { session }
+                    );
+                }
+            }
+        }
+
+        // Step 2: Apply new inventory if it is Completed
+        if (newBody.saleStatus === 'Completed' && newBody.products) {
+            for (const item of newBody.products) {
+                const productId = item.productId || item._id;
+                if (productId) {
+                    await Product.findByIdAndUpdate(
+                        productId,
+                        { $inc: { currentStock: -(Number(item.quantity) || 1) } },
+                        { session }
+                    );
+                }
+            }
+        }
+
+        // Step 1: Revert old balance if it was Paid
+        if (oldSale.paymentStatus === 'Paid' && oldSale.accountId) {
+            await Account.findByIdAndUpdate(
+                oldSale.accountId,
+                { $inc: { currentBalance: -(Number(oldSale.totalAmount) || 0) } },
+                { session }
+            );
+        }
+
+        // Step 2: Apply new balance if it is Paid
+        if (newBody.paymentStatus === 'Paid' && newBody.accountId) {
+            await Account.findByIdAndUpdate(
+                newBody.accountId,
+                { $inc: { currentBalance: (Number(newBody.totalAmount) || 0) } },
+                { session }
+            );
+        }
+
+        const updatedSale = await Sale.findByIdAndUpdate(id, newBody, { new: true, session });
+
+        await session.commitTransaction();
+        session.endSession();
+        return res.json({ msg: "updated the sale", updatedSale });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("Sale edit failed: ", error);
+        return res.status(500).json({ msg: 'Failed to edit sale', error: error.message });
+    }
 });
 
 module.exports = {

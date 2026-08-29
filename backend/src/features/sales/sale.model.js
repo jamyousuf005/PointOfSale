@@ -30,10 +30,17 @@ const addSale = new mongoose.Schema({
        type: Number
    },
     products: [{
+        productId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Product'
+        },
         productName: String,
         productCode: String,
         alertQuantity: Number,
         productCost: Number,
+        quantity: Number,
+        discount: Number,
+        tax: Number,
         subTotal: Number,
     }],
     orderTax:{

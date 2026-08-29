@@ -11,7 +11,8 @@ const addProduct = new mongoose.Schema({
     },
     productCode: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     barcode: {
         type: String,
@@ -64,9 +65,15 @@ const addProduct = new mongoose.Schema({
         type: String,
         default: ""
     },
-    excelCommunication: { type: Number },
-    hasVariant: { type: String },
-    promotionalPrice: { type: Number }
+    featured: { type: Boolean, default: false },
+    hasWarehousePrice: { type: Boolean, default: false },
+    warehousePrices: { type: Map, of: Number },
+    hasVariant: { type: Boolean, default: false },
+    variantList: { type: [String], default: [] },
+    hasPromotion: { type: Boolean, default: false },
+    promotionPrice: { type: Number },
+    promotionStart: { type: Date },
+    promotionEnd: { type: Date }
 })
 
 

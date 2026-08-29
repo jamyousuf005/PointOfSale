@@ -19,12 +19,14 @@ import AddProduct from './features/products/AddProduct';
 import ProductList from './features/products/ProductList';
 import PurchaseList from './features/purchases/PurchaseList';
 import AddPurchase from './features/purchases/AddPurchase';
-import ImportPurchase from './features/purchases/Purchase';
+import ImportPurchase from './features/purchases/ImportPurchase';
 import SaleList from './features/sales/SaleList';
 import AddSale from './features/sales/AddSale';
-import ImportSale from './features/sales/Sale';
+import ImportSale from './features/sales/ImportSale';
 import Sale from './features/sales/Sale';
+import AddSaleReturn from './features/sales/AddSaleReturn';
 import Purchase from './features/purchases/Purchase';
+import AddPurchaseReturn from './features/purchases/AddPurchaseReturn';
 import AccountList from './features/accounts/AccountList';
 import AddAccount from './features/accounts/AddAccount';
 import MoneyTransfer from './features/accounts/MoneyTransfer';
@@ -106,7 +108,9 @@ function App() {
             <Route path="sale/edit/:id" element={<EditSale />} />
 
             <Route path="return/sale" element={<Sale />} />
+            <Route path="return/sale/add" element={<AddSaleReturn />} />
             <Route path="return/purchase" element={<Purchase />} />
+            <Route path="return/purchase/add" element={<AddPurchaseReturn />} />
 
             <Route path="account/list" element={<AccountList />} />
             <Route path="account/add" element={<AddAccount />} />

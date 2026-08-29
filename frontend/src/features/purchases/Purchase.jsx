@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 // Defining the variants for the animation
 const containerVariants = {
@@ -34,6 +35,21 @@ const Purchase = () => {
   const [recordsPerPage, setRecordsPerPage] = useState('10');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState([]);
+  const [returns, setReturns] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/returns/purchase-returns`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+         if (Array.isArray(data)) setReturns(data);
+      })
+      .catch(err => console.error("Failed to fetch returns:", err));
+  }, []);
 
   const toggleAllRows = () => {
     // Placeholder logic since no real data
@@ -54,10 +70,11 @@ const Purchase = () => {
       >
         {/* Header Section */}
         <div className="sm:p-4">
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base">
-              + Add Return
-            </button>
+          <div className="flex flex-wrap gap-2 mb-4 justify-between items-center">
+             <h2 className="text-xl font-semibold">Purchase Returns</h2>
+             <button onClick={() => navigate('/return/purchase/add')} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors">
+                + Create Return
+             </button>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
@@ -119,16 +136,40 @@ const Purchase = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                <tr>
-                  <td colSpan="8" className="text-center text-gray-500 py-8">
-                    No returns available in table.
-                  </td>
-                </tr>
+                {returns.length > 0 ? (
+                  returns.map(ret => (
+                    <tr key={ret._id} className="hover:bg-gray-50">
+                      <td className="px-3 py-4">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                        />
+                      </td>
+                      <td className="px-3 py-4">{new Date(ret.createdAt).toLocaleDateString()}</td>
+                      <td className="px-3 py-4">{ret._id}</td>
+                      <td className="px-3 py-4">N/A</td>
+                      <td className="px-3 py-4">{ret.supplier || 'N/A'}</td>
+                      <td className="px-3 py-4">{ret.warehouse || 'N/A'}</td>
+                      <td className="px-3 py-4">${(ret.totalRefundAmount || 0).toFixed(2)}</td>
+                      <td className="px-3 py-4">
+                        <span className={`px-2 py-1 text-xs rounded-full ${ret.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {ret.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="text-center text-gray-500 py-8">
+                      No returns available in table.
+                    </td>
+                  </tr>
+                )}
               </tbody>
               <tfoot className="bg-white border-t border-gray-200">
                 <tr className="font-semibold">
-                  <td colSpan="6" className="px-3 py-3">Total</td>
-                  <td className="px-3 py-3">0.00</td>
+                  <td colSpan="6" className="px-3 py-3 text-right">Total</td>
+                  <td className="px-3 py-3">${returns.reduce((sum, r) => sum + (r.totalRefundAmount || 0), 0).toFixed(2)}</td>
                   <td className="px-3 py-3"></td>
                 </tr>
               </tfoot>

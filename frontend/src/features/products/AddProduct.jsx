@@ -4,6 +4,7 @@ import DragDropImageUpload from '../../core/DragDropUpload';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { CustomSelect } from '../../components/common/CustomSelect';
+import { toast } from 'react-toastify';
 
 // Variants from the Category component
 const containerVariants = {
@@ -82,7 +83,21 @@ export default function AddProductForm() {
   });
 
   const brandOptions = ['Dell', 'Club Special', 'Mac', 'HP', 'Oppo', 'Vivo'];
-  const categoryOptions = ['Electronics', 'Clothing', 'Food', 'Books'];
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  
+  React.useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001'}/api/categories`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (Array.isArray(data)) {
+        setCategoryOptions(data.map(cat => cat.categoryName));
+      }
+    })
+    .catch(err => console.error('Failed to fetch categories', err));
+  }, []);
+
   const productUnitOptions = ['Kilogram', 'Per PC'];
   const salePurchaseUnitOptions = ['Piece', 'Kg', 'Liter', 'Meter'];
   const productTaxOptions = ['No Tax', '5%', '10%', '15%', '20%'];
@@ -155,15 +170,14 @@ export default function AddProductForm() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        console.error('API Error:', errorData);
-        throw new Error('Network response was not ok');
+        throw new Error(errorData.message || 'Network response was not ok');
       }
 
-      alert('Product added successfully!');
+      toast.success('Product added successfully!');
       navigate('/product/list');
     } catch (err) {
       console.error('Error:', err);
-      alert('Failed to submit form. Please try again.');
+      toast.error(err.message || 'Failed to submit form. Please try again.');
     }
   };
 

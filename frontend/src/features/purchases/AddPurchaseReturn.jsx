@@ -33,18 +33,20 @@ const uniformVariants = {
   }
 };
 
-const AddPurchase = () => {
+const AddPurchaseReturn = () => {
   const [formData, setFormData] = useState({
     warehouse: '',
     supplier: '',
-    purchaseStatus: 'Received',
+    status: 'Completed',
     orderTax: 0,
     discount: 0,
     shippingCost: 0,
+    refundStatus: 'Pending',
+    accountId: '',
     note: '',
   });
 
-  const { products: globalProducts, customers, setPurchases } = useContext(ContextApi);
+  const { products: globalProducts, customers, setPurchases, accounts } = useContext(ContextApi);
   const [productSearch, setProductSearch] = useState('');
   const [allProducts, setAllProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
@@ -72,7 +74,7 @@ const AddPurchase = () => {
 
   const [warehouses, setWarehouses] = useState([]);
 
-  const purchaseStatusOptions = ['Received', 'Pending', 'Ordered'];
+  const statusOptions = ['Received', 'Pending', 'Ordered'];
   const taxOptions = [
     { label: 'No Tax', value: 0 },
     { label: 'VAT 5%', value: 5 },
@@ -161,14 +163,19 @@ const AddPurchase = () => {
       return;
     }
 
+    if (formData.refundStatus === 'Paid' && !formData.accountId) {
+      alert('Please select an account for the paid return.');
+      return;
+    }
+
     const submissionData = {
       ...formData,
-      products: selectedProducts.map(({ _id, ...product }) => ({ ...product, tax: formData.orderTax, discount: formData.discount, subTotal: calculateSubTotalForProduct(product) })),
-      total: calculateGrandTotal()
+      products: selectedProducts.map(({ _id, ...product }) => ({ ...product, productId: _id, tax: formData.orderTax, discount: formData.discount, subTotal: calculateSubTotalForProduct(product) })),
+      totalRefundAmount: calculateGrandTotal()
     };
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/returns/purchase-return`, {
         method: 'POST',
         headers: {
           'Content-type': 'application/json',
@@ -187,7 +194,7 @@ const AddPurchase = () => {
           setPurchases(prev => [...prev, newPurchase]);
       }
       
-      alert('Purchase order submitted successfully!');
+      alert('Purchase return submitted successfully!');
       navigate('/purchase/list');
 
     } catch (err) {
@@ -323,16 +330,33 @@ const AddPurchase = () => {
           {/* Second Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Purchase Status
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Refund Status
               </label>
               <CustomSelect
-                name="purchaseStatus"
-                value={formData.purchaseStatus}
+                name="refundStatus"
+                value={formData.refundStatus}
                 onChange={handleInputChange}
-                options={purchaseStatusOptions}
+                options={['Pending', 'Due', 'Paid']}
               />
             </div>
+            {formData.refundStatus === 'Paid' && (
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Refund Account <span className="text-red-500">*</span>
+                </label>
+                <CustomSelect
+                  name="accountId"
+                  value={accounts.find(a => a._id === formData.accountId)?.accountName || ""}
+                  onChange={(name, label) => {
+                    const opt = accounts.find(a => a.accountName === label);
+                    if(opt) handleInputChange('accountId', opt._id);
+                  }}
+                  options={accounts.map(a => a.accountName)}
+                  placeholder="Select Account..."
+                />
+              </div>
+            )}
           </div>
 
           {/* Product Selection */}
@@ -524,4 +548,4 @@ const AddPurchase = () => {
   );
 };
 
-export default AddPurchase; 
+export default AddPurchaseReturn; 

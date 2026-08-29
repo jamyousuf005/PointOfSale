@@ -1,9 +1,8 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext } from "react";
 import { Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { ContextApi } from '../../core/ContextApi';
-import { useNavigate, useParams } from "react-router-dom";
 import { CustomSelect } from '../../components/common/CustomSelect';
 
 // Defining the variants for the animation
@@ -35,7 +34,7 @@ const uniformVariants = {
   }
 };
 
-const EditSale = () => {
+const AddSaleReturn = () => {
   const [formData, setFormData] = useState({
     customer: "",
     warehouse: "",
@@ -43,19 +42,18 @@ const EditSale = () => {
     orderTax: 0,
     orderDiscount: 0,
     shippingCost: 0,
-    saleStatus: "Completed",
-    paymentStatus: "Pending",
+    status: "Completed",
+    refundStatus: "Pending",
     accountId: "",
     saleNote: "",
     staffNote: "",
   });
 
-  const { id } = useParams();
   const { products: allProducts, customers, setSales, accounts } = useContext(ContextApi);
   const [productSearch, setProductSearch] = useState('');
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [quantities, setQuantities] = useState({});
-  const navigate = useNavigate();
+  const [notification, setNotification] = useState({ message: '', type: '' });
 
   const warehouses = ['Main Warehouse', 'Secondary Warehouse', 'Backup Warehouse'];
   const billers = ['Excel communication'];
@@ -97,7 +95,6 @@ const EditSale = () => {
     setQuantities(prev => ({ ...prev, [id]: newQuantity }));
   };
 
-  // Calculation Functions
   const calculateItems = () => {
     return selectedProducts.length;
   };
@@ -118,6 +115,7 @@ const EditSale = () => {
         const line = lines[i].trim();
         if (!line) continue;
         
+        // Format: product_code, quantity, price
         const [productCode, qty, priceStr] = line.split(',');
         
         const matchedProduct = allProducts.find(p => p.productCode === productCode?.trim());
@@ -168,91 +166,88 @@ const EditSale = () => {
 
   const calculateGrandTotal = () => {
     const subtotal = calculateTotal();
-    const orderTaxAmount = subtotal * ((formData.orderTax || 0) / 100);
-    const finalTotal = (subtotal || 0) + (orderTaxAmount || 0) - (formData.orderDiscount || 0) + (formData.shippingCost || 0);
+    const orderTaxAmount = subtotal * (formData.orderTax / 100);
+    const finalTotal = subtotal + orderTaxAmount - formData.orderDiscount + formData.shippingCost;
     return finalTotal;
   };
 
-  useEffect(() => {
-    if (id) {
-      fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sales/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-        .then(res => {
-          if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-          }
-          return res.json();
-        })
-        .then(data => {
-          setFormData({
-            customer: data.customer,
-            warehouse: data.warehouse,
-            biller: data.biller,
-            orderTax: data.orderTax,
-            orderDiscount: data.orderDiscount,
-            shippingCost: data.shippingCost,
-            saleStatus: data.saleStatus,
-            paymentStatus: data.paymentStatus,
-            accountId: data.accountId || "",
-            saleNote: data.saleNote,
-            staffNote: data.staffNote,
-          });
-
-          setSelectedProducts(data.products);
-          const newQuantities = {};
-          data.products.forEach(p => {
-            newQuantities[p._id] = p.quantity;
-          });
-          setQuantities(newQuantities);
-        })
-        .catch(err => console.error("Error fetching sale data:", err));
-    }
-  }, [id]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.paymentStatus === 'Paid' && !formData.accountId) {
-      alert('Please select an account for the paid sale.');
+
+    // Basic validation
+    if (!formData.customer || !formData.warehouse || !formData.biller) {
+      setNotification({ message: 'Please fill out all required fields.', type: 'error' });
       return;
     }
-    
+    if (selectedProducts.length === 0) {
+      setNotification({ message: 'Please add at least one product.', type: 'error' });
+      return;
+    }
+
+    if (formData.refundStatus === 'Paid' && !formData.accountId) {
+      setNotification({ message: 'Please select an account for the paid sale.', type: 'error' });
+      return;
+    }
+
     try {
       const saleData = {
         ...formData,
         products: selectedProducts.map(p => ({
-          productId: p._id || p.productId,
+          productId: p._id,
           productCode: p.productCode,
           productName: p.productName,
-          quantity: quantities[p._id || p.productId] || 1,
+          quantity: quantities[p._id] || 1,
           productCost: p.productCost || 0,
           unitPrice: p.productPrice,
           tax: 0,
           discount: 0,
           subTotal: calculateSubtotal(p),
         })),
-        totalAmount: calculateGrandTotal(),
+        totalRefundAmount: calculateGrandTotal(),
       };
 
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sales/${id}`, {
-        method: 'PUT',
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/returns/sale-return`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+           'Content-Type': 'application/json',
+           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(saleData)
       });
       const data = await res.json();
-      const updatedSale = data.sale || data;
-      if (setSales && updatedSale && updatedSale._id) {
-         setSales(prev => prev.map(s => s._id === updatedSale._id ? updatedSale : s));
+
+      if (res.ok) {
+        setNotification({ message: 'Sale return submitted successfully!', type: 'success' });
+        if (setSales && data) {
+           setSales(prev => [...prev, data.sale || data]);
+        }
+        // Optionally reset form
+        setFormData({
+          customer: "",
+          warehouse: "",
+          biller: "",
+          orderTax: 0,
+          orderDiscount: 0,
+          shippingCost: 0,
+          status: "Completed",
+          refundStatus: "Pending",
+          accountId: "",
+          saleNote: "",
+          staffNote: "",
+        });
+        setSelectedProducts([]);
+        setQuantities({});
+      } else {
+        throw new Error(data.message || 'Failed to submit the form.');
       }
-      navigate('/sale/list');
     } catch (err) {
-      console.error(err);
+      setNotification({ message: err.message || 'An error occurred.', type: 'error' });
     }
+
+    // Clear notification after 5 seconds
+    setTimeout(() => {
+      setNotification({ message: '', type: '' });
+    }, 5000);
   };
 
   return (
@@ -267,8 +262,22 @@ const EditSale = () => {
         className="mx-auto p-6 bg-white rounded-lg shadow-sm"
         variants={uniformVariants}
       >
-        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Edit Sale</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Add Sale</h1>
         <p className="mb-6 text-sm text-gray-500 italic">The field labels marked with <span className="text-red-500">*</span> are required input fields.</p>
+
+        {/* Notification component with Framer Motion */}
+        <AnimatePresence>
+          {notification.message && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={`p-3 mb-4 rounded-md text-white font-medium ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}
+            >
+              {notification.message}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <form className="space-y-6" onSubmit={handleSubmit}>
           {/* Form fields */}
@@ -315,27 +324,27 @@ const EditSale = () => {
                 Sale Status
               </label>
               <CustomSelect
-                name="saleStatus"
-                value={formData.saleStatus}
+                name="status"
+                value={formData.status}
                 onChange={handleInputChange}
                 options={['Completed', 'Pending', 'Canceled']}
               />
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700">
-                Payment Status
+                Refund Status
               </label>
               <CustomSelect
-                name="paymentStatus"
-                value={formData.paymentStatus}
+                name="refundStatus"
+                value={formData.refundStatus}
                 onChange={handleInputChange}
                 options={['Pending', 'Due', 'Paid']}
               />
             </div>
-            {formData.paymentStatus === 'Paid' && (
+            {formData.refundStatus === 'Paid' && (
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Account <span className="text-red-500">*</span>
+                  Refund Account <span className="text-red-500">*</span>
                 </label>
                 <CustomSelect
                   name="accountId"
@@ -461,7 +470,7 @@ const EditSale = () => {
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-sm font-medium text-gray-900">
-                            {(calculateSubtotal(product) || 0).toFixed(2)}
+                            {calculateSubtotal(product).toFixed(2)}
                           </span>
                         </td>
                         <td className="px-2">
@@ -488,7 +497,7 @@ const EditSale = () => {
                     </td>
                     <td colSpan="2" className="px-4 py-3 text-gray-900">0.00</td>
                     <td className="px-4 py-3 text-gray-900">0.00</td>
-                    <td className="px-4 py-3 text-gray-900">{(calculateTotal() || 0).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-gray-900">{calculateTotal().toFixed(2)}</td>
                     <td className="px-4 py-3"></td>
                   </tr>
                 </tfoot>
@@ -568,27 +577,27 @@ const EditSale = () => {
 
           {/* Final Summary Section */}
           <div className="bg-gray-50 p-6 rounded-md mt-6 border border-gray-200 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Sale Summary</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Sale Return Summary</h3>
             <div className="grid grid-cols-2 gap-y-3 text-sm font-medium">
               <div className="text-gray-600">Items</div>
               <div className="text-right font-bold text-gray-900">{calculateItems()}</div>
 
               <div className="text-gray-600">Total</div>
-              <div className="text-right font-bold text-gray-900">${(calculateTotal() || 0).toFixed(2)}</div>
+              <div className="text-right font-bold text-gray-900">${calculateTotal().toFixed(2)}</div>
 
               <div className="text-gray-600">Order Tax ({formData.orderTax}%)</div>
               <div className="text-right font-bold text-gray-900">${(calculateTotal() * (formData.orderTax / 100)).toFixed(2)}</div>
 
               <div className="text-gray-600">Order Discount</div>
-              <div className="text-right font-bold text-gray-900">${(formData.orderDiscount || 0).toFixed(2)}</div>
+              <div className="text-right font-bold text-gray-900">${formData.orderDiscount.toFixed(2)}</div>
 
               <div className="text-gray-600">Shipping Cost</div>
-              <div className="text-right font-bold text-gray-900">${(formData.shippingCost || 0).toFixed(2)}</div>
+              <div className="text-right font-bold text-gray-900">${formData.shippingCost.toFixed(2)}</div>
 
               <div className="col-span-2 border-t border-gray-300 my-2"></div>
 
               <div className="text-gray-900 text-lg font-bold">Grand Total</div>
-              <div className="text-right text-lg font-bold text-purple-600">${(calculateGrandTotal() || 0).toFixed(2)}</div>
+              <div className="text-right text-lg font-bold text-purple-600">${calculateGrandTotal().toFixed(2)}</div>
             </div>
           </div>
 
@@ -608,4 +617,4 @@ const EditSale = () => {
   );
 };
 
-export default EditSale;
+export default AddSaleReturn;
