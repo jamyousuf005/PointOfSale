@@ -197,7 +197,11 @@ const Home = () => {
         totalSaleReturns: 0,
         totalPurchaseReturns: 0,
         profit: 0,
-        monthlyData: []
+        monthlyData: [],
+        recentTransactions: { sales: [], purchases: [] },
+        bestSellersMonthQty: [],
+        bestSellersYearQty: [],
+        bestSellersYearPrice: []
     });
     
     useEffect(() => {
@@ -278,11 +282,17 @@ const Home = () => {
       </motion.div> 
 
       <motion.div variants={uniformVariants}>
-        <DashboardWidgets/>
+        <DashboardWidgets 
+          recentTransactions={kpiData.recentTransactions || { sales: [], purchases: [] }} 
+          bestSellersMonthQty={kpiData.bestSellersMonthQty || []} 
+        />
       </motion.div>
 
       <motion.div variants={uniformVariants}>
-        <BottomWidgets/>
+        <BottomWidgets 
+          bestSellersYearQty={kpiData.bestSellersYearQty || []} 
+          bestSellersYearPrice={kpiData.bestSellersYearPrice || []} 
+        />
       </motion.div>
 
       <motion.footer 

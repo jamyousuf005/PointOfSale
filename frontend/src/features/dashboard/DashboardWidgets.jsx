@@ -8,7 +8,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 
-const DashboardWidgets = () => {
+const DashboardWidgets = ({ recentTransactions = { sales: [], purchases: [] }, bestSellersMonthQty = [] }) => {
   const [activeTab, setActiveTab] = React.useState("Sale");
 
   const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -36,16 +36,8 @@ const DashboardWidgets = () => {
   }
 
   const dataMap = {
-    Sale: [
-      createData(
-        '27-06-2025',
-        'posr-20250627-103020',
-        'Farhan Mallah',
-        'Completed',
-        21000
-      ),
-    ],
-    Purchase: [],
+    Sale: recentTransactions.sales || [],
+    Purchase: recentTransactions.purchases || [],
     Quotation: [],
     Payment: [],
   };
@@ -142,6 +134,22 @@ const DashboardWidgets = () => {
             <div>SL No</div>
             <div>Product Details</div>
             <div className="text-right">Qty</div>
+          </div>
+          <div className="mt-2">
+            {bestSellersMonthQty.length > 0 ? (
+              bestSellersMonthQty.map((item, idx) => (
+                <div key={item.id} className="grid grid-cols-3 text-sm text-gray-800 py-3 border-t border-gray-200">
+                  <div>{idx + 1}</div>
+                  <div>
+                    <div>{item.name}</div>
+                    <div className="text-xs text-gray-500">[{item.code || item.id.slice(-6)}]</div>
+                  </div>
+                  <div className="text-right">{item.qty}</div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-sm text-gray-500 py-4">No records found for this month</div>
+            )}
           </div>
         </div>
       </div>

@@ -54,6 +54,64 @@ const getDashboardKPIs = asyncHandler(async (req, res) => {
         }
     });
 
+    // 8. Recent Transactions
+    const recentSales = await Sale.find({ userId: (req.user.tenantId || req.user._id) }).sort({ createdAt: -1 }).limit(5).lean();
+    const recentPurchases = await Purchase.find({ userId: (req.user.tenantId || req.user._id) }).sort({ createdAt: -1 }).limit(5).lean();
+    
+    const recentTransactions = {
+        sales: recentSales.map(s => ({
+            date: new Date(s.createdAt).toLocaleDateString('en-GB'),
+            reference: 'SALE-' + s._id.toString().slice(-6),
+            customer: s.customer || 'Walk-in',
+            status: s.saleStatus || 'Completed',
+            grandTotal: s.totalAmount || 0
+        })),
+        purchases: recentPurchases.map(p => ({
+            date: new Date(p.createdAt).toLocaleDateString('en-GB'),
+            reference: 'PUR-' + p._id.toString().slice(-6),
+            customer: p.supplier || 'N/A',
+            status: p.status || 'Completed',
+            grandTotal: p.total || 0
+        }))
+    };
+
+    // 9. Best Sellers
+    const currentMonth = new Date().getMonth();
+    const bestSellersMonthMap = {};
+    const bestSellersYearMap = {};
+
+    sales.forEach(sale => {
+        const date = new Date(sale.createdAt);
+        const isCurrentYear = date.getFullYear() === currentYear;
+        const isCurrentMonth = isCurrentYear && date.getMonth() === currentMonth;
+
+        if (sale.products && isCurrentYear) {
+            sale.products.forEach(item => {
+                const id = item.productId ? item.productId.toString() : item.productName;
+                const name = item.productName || 'Unknown';
+                const code = item.productCode || '';
+                
+                if (!bestSellersYearMap[id]) {
+                    bestSellersYearMap[id] = { id, name, code, qty: 0, total: 0 };
+                }
+                bestSellersYearMap[id].qty += (item.quantity || 0);
+                bestSellersYearMap[id].total += (item.quantity || 0) * (item.netUnitPrice || 0);
+
+                if (isCurrentMonth) {
+                    if (!bestSellersMonthMap[id]) {
+                        bestSellersMonthMap[id] = { id, name, code, qty: 0, total: 0 };
+                    }
+                    bestSellersMonthMap[id].qty += (item.quantity || 0);
+                    bestSellersMonthMap[id].total += (item.quantity || 0) * (item.netUnitPrice || 0);
+                }
+            });
+        }
+    });
+
+    const bestSellersMonthQty = Object.values(bestSellersMonthMap).sort((a, b) => b.qty - a.qty).slice(0, 5);
+    const bestSellersYearQty = Object.values(bestSellersYearMap).sort((a, b) => b.qty - a.qty).slice(0, 5);
+    const bestSellersYearPrice = Object.values(bestSellersYearMap).sort((a, b) => b.total - a.total).slice(0, 5);
+
     return res.status(200).json({
         totalSalesRevenue,
         totalPurchaseCost,
@@ -62,7 +120,11 @@ const getDashboardKPIs = asyncHandler(async (req, res) => {
         totalSaleReturns,
         totalPurchaseReturns,
         profit,
-        monthlyData
+        monthlyData,
+        recentTransactions,
+        bestSellersMonthQty,
+        bestSellersYearQty,
+        bestSellersYearPrice
     });
 });
 

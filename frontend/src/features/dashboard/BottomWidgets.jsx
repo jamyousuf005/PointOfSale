@@ -1,6 +1,6 @@
 import React from 'react';
 
-const BottomWidgets = () => {
+const BottomWidgets = ({ bestSellersYearQty = [], bestSellersYearPrice = [] }) => {
   return (
     <div className="flex w-full items-stretch gap-5 p-5 flex-col md:flex-row">
       {/* Left Box - Best Seller (Qty) */}
@@ -23,13 +23,21 @@ const BottomWidgets = () => {
           </div>
 
           {/* Table Row */}
-          <div className="grid grid-cols-3 text-sm text-gray-800 py-3 border-t border-gray-200">
-            <div>1</div>
-            <div>
-              <div>Dell 3330</div>
-              <div className="text-xs text-gray-500">[78024129]</div>
-            </div>
-            <div className="text-right">1</div>
+          <div>
+            {bestSellersYearQty.length > 0 ? (
+              bestSellersYearQty.map((item, idx) => (
+                <div key={item.id} className="grid grid-cols-3 text-sm text-gray-800 py-3 border-t border-gray-200">
+                  <div>{idx + 1}</div>
+                  <div>
+                    <div>{item.name}</div>
+                    <div className="text-xs text-gray-500">[{item.code || item.id.slice(-6)}]</div>
+                  </div>
+                  <div className="text-right">{item.qty}</div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-sm text-gray-500 py-4 border-t border-gray-200">No records found for this year</div>
+            )}
           </div>
         </div>
       </div>
@@ -54,13 +62,21 @@ const BottomWidgets = () => {
           </div>
 
           {/* Table Row */}
-          <div className="grid grid-cols-3 text-sm text-gray-800 py-3 border-t border-gray-200">
-            <div>1</div>
-            <div>
-              <div>Dell 3330</div>
-              <div className="text-xs text-gray-500">[78024129]</div>
-            </div>
-            <div className="text-right">22000.00</div>
+          <div>
+            {bestSellersYearPrice.length > 0 ? (
+              bestSellersYearPrice.map((item, idx) => (
+                <div key={item.id} className="grid grid-cols-3 text-sm text-gray-800 py-3 border-t border-gray-200">
+                  <div>{idx + 1}</div>
+                  <div>
+                    <div>{item.name}</div>
+                    <div className="text-xs text-gray-500">[{item.code || item.id.slice(-6)}]</div>
+                  </div>
+                  <div className="text-right">{item.total.toLocaleString()}</div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-sm text-gray-500 py-4 border-t border-gray-200">No records found for this year</div>
+            )}
           </div>
         </div>
       </div>
