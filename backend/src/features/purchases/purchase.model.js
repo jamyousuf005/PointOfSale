@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
 
 const addPurchase = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     warehouse: {
         type: String,
         required: true
@@ -50,6 +51,14 @@ const addPurchase = new mongoose.Schema({
     total: {
         type: Number
     },
+    paid: {
+        type: Number,
+        default: 0
+    },
+    due: {
+        type: Number,
+        default: 0
+    }
 }, {
     timestamps: true
 });

@@ -1,5 +1,6 @@
 const PurchaseReturn = require('./purchaseReturn.model');
 const Product = require('../products/product.model');
+const Account = require('../accounts/account.model');
 const mongoose = require('mongoose');
 const asyncHandler = require('../../middlewares/asyncHandler');
 
@@ -11,15 +12,15 @@ const addPurchaseReturn = asyncHandler(async (req, res) => {
         const body = req.body;
         
         // Create Purchase Return
-        const newPurchaseReturn = await PurchaseReturn.create([body], { session });
+        const newPurchaseReturn = await PurchaseReturn.create([{ ...body, userId: (req.user.tenantId || req.user._id) }], { session });
 
         // Update Inventory for each product (decrease stock)
         if (body.products && Array.isArray(body.products)) {
             for (const item of body.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
-                    await Product.findByIdAndUpdate(
-                        productId,
+                    await Product.findOneAndUpdate(
+                        { _id: productId, userId: (req.user.tenantId || req.user._id) },
                         { $inc: { currentStock: -(Number(item.quantity) || 1) } },
                         { session }
                     );
@@ -30,8 +31,8 @@ const addPurchaseReturn = asyncHandler(async (req, res) => {
         // Add money back to Account (Refund)
         // Ensure you pass accountId from frontend when making a return
         if (body.accountId) {
-            await Account.findByIdAndUpdate(
-                body.accountId,
+            await Account.findOneAndUpdate(
+                { _id: body.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: (Number(body.totalRefundAmount) || 0) } },
                 { session }
             );
@@ -49,7 +50,7 @@ const addPurchaseReturn = asyncHandler(async (req, res) => {
 });
 
 const showPurchaseReturns = asyncHandler(async (req, res) => {
-    const showAllPurchaseReturns = await PurchaseReturn.find({});
+    const showAllPurchaseReturns = await PurchaseReturn.find({ userId: (req.user.tenantId || req.user._id) });
     return res.status(200).json(showAllPurchaseReturns);
 });
 

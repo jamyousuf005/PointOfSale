@@ -13,6 +13,16 @@ const userSchema = new mongoose.Schema({
     password:{
         type:String,
         required:true
+    },
+    role: {
+        type: String,
+        enum: ['Admin', 'Manager', 'Cashier'],
+        default: 'Admin'
+    },
+    tenantId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: false // will be set during signup or employee creation
     }
 
 },{timestamps:true})

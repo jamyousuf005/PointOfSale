@@ -12,7 +12,6 @@ import { TbReportSearch } from 'react-icons/tb';
 import { CiSettings } from 'react-icons/ci';
 import { RiDashboard2Line } from "react-icons/ri";
 
-
 const navItems = [
   {
     label: 'Dashboard',
@@ -73,6 +72,14 @@ const navItems = [
     ],
   },
   {
+    label: 'Supplier',
+    icon: <MdPerson />,
+    sub: [
+      { label: 'Supplier List', path: '/supplier/list' },
+      { label: 'Add Supplier', path: '/supplier/add' },
+    ],
+  },
+  {
     label: 'Reports',
     icon: <TbReportSearch />,
     sub: [
@@ -89,7 +96,9 @@ const navItems = [
       { label: 'Unit', path: '/settings/unit' },
       { label: 'Brand', path: '/settings/brand' },
       { label: 'Tax', path: '/settings/tax' },
+      { label: 'Warehouse', path: '/settings/warehouse' },
       { label: 'General', path: '/settings/general' },
+      { label: 'Employees', path: '/settings/employees' },
     ],
   },
 ];
@@ -97,6 +106,62 @@ const navItems = [
 const Sidebar = ({ isOpen, onCrossClick }) => {
   const navigate = useNavigate();
   const [openDropdown, setOpenDropdown] = useState(null);
+  
+  const role = (localStorage.getItem('role') || 'Cashier').toLowerCase(); // Normalize to lowercase
+
+  const filteredNavItems = navItems.filter(item => {
+    if (role === 'admin') return true; // Admin sees all
+    if (role === 'manager') {
+      // Manager cannot see Accounting or Employees
+      if (item.label === 'Accounting') return false;
+      return true;
+    }
+    if (role === 'cashier') {
+      // Cashier only sees Dashboard, Product, Sale, Return, Customer, Supplier
+      const allowedForCashier = ['Dashboard', 'Product', 'Sale', 'Return', 'Customer', 'Supplier'];
+      if (!allowedForCashier.includes(item.label)) return false;
+      return true;
+    }
+    return false;
+  }).map(item => {
+    // Further filter sub-menus if necessary
+    if (role === 'manager' && item.label === 'Settings') {
+      // Filter out Employees from Settings for Manager
+      return {
+        ...item,
+        sub: item.sub.filter(subItem => subItem.label !== 'Employees')
+      };
+    }
+    if (role === 'cashier' && item.label === 'Product') {
+      // Cashiers can only view Product List, not Add/Category
+      return {
+        ...item,
+        sub: item.sub.filter(subItem => subItem.label === 'Product List')
+      };
+    }
+    if (role === 'cashier' && item.label === 'Return') {
+      // Cashiers can only view Sale Return
+      return {
+        ...item,
+        sub: item.sub.filter(subItem => subItem.label === 'Sale Return')
+      };
+    }
+    if (role === 'cashier' && item.label === 'Customer') {
+      // Cashiers can only view Customer List
+      return {
+        ...item,
+        sub: item.sub.filter(subItem => subItem.label === 'Customer List')
+      };
+    }
+    if (role === 'cashier' && item.label === 'Supplier') {
+      // Cashiers can only view Supplier List
+      return {
+        ...item,
+        sub: item.sub.filter(subItem => subItem.label === 'Supplier List')
+      };
+    }
+    return item;
+  });
 
   const toggleDropdown = (index) => {
     setOpenDropdown(openDropdown === index ? null : index);
@@ -120,7 +185,7 @@ const Sidebar = ({ isOpen, onCrossClick }) => {
       </div>
 
       <ul className="space-y-1 mt-2">
-        {navItems.map((item, index) => (
+        {filteredNavItems.map((item, index) => (
           <li key={index}>
             <button
               onClick={() => {

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const purchaseReturnSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     originalPurchaseId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Purchase',

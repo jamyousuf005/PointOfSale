@@ -42,9 +42,10 @@ const Login = () => {
 
         localStorage.setItem('token', jwtToken)
         localStorage.setItem('loggedIn', user.name)
+        localStorage.setItem('role', user.role)
         handleSuccess('login successful')
         setTimeout(() => {
-              window.location.href='/login'
+              window.location.href='/dashboard'
         }, 1200)  
 
          } else if (error) {

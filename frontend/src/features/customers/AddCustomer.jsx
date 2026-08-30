@@ -92,7 +92,7 @@ export default function AddCustomer() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -100,7 +100,6 @@ export default function AddCustomer() {
     }
 
     const newCustomer = {
-      id: Date.now(), // Generate a fake ID for frontend functionality
       group: customerData.customerGroup,
       name: customerData.name,
       company: customerData.companyName,
@@ -111,24 +110,43 @@ export default function AddCustomer() {
       balance: "0.00",
     };
     
-    setCustomers(prev => [...prev, newCustomer]);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001'}/api/customers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(newCustomer)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add customer');
+      }
+
+      const savedCustomer = await response.json();
+      setCustomers(prev => [savedCustomer.customer, ...prev]);
     
-    setCustomerData({
-      customerGroup: "Regular Customer",
-      name: "",
-      companyName: "",
-      email: "",
-      phone: "",
-      taxNumber: "",
-      address: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "",
-      addUser: false,
-    });
-    alert('Customer Added successfully!');
-    navigate('/customer/list');
+      setCustomerData({
+        customerGroup: "Regular Customer",
+        name: "",
+        companyName: "",
+        email: "",
+        phone: "",
+        taxNumber: "",
+        address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "",
+        addUser: false,
+      });
+      alert('Customer Added successfully!');
+      navigate('/customer/list');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to add customer.');
+    }
   };
 
   return (

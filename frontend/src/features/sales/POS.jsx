@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Search, Plus, Edit3, ChevronDown, Download } from 'lucide-react'; // Added ChevronDown and Download for consistency, though not directly used in visible components here.
 import { motion } from 'framer-motion'; // Import motion
 import dell from '../../assets/dell.png';
@@ -39,9 +39,12 @@ const uniformVariants = {
 };
 
 const POS = () => {
-  const { laptop, accounts } = useContext(ContextApi);
-  const [selectedCustomer, setSelectedCustomer] = useState('Select customer...');
+  const { laptop } = useContext(ContextApi);
+  const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
+  const [selectedWarehouse, setSelectedWarehouse] = useState('');
+  const [selectedBiller, setSelectedBiller] = useState('');
+  
   const [searchProduct, setSearchProduct] = useState('');
   const [activeTab, setActiveTab] = useState('Category');
   const [cartItems, setCartItems] = useState([]);
@@ -51,23 +54,59 @@ const POS = () => {
   const [discount, setDiscount] = useState(0);
   const [shipping, setShipping] = useState(0);
 
-  const products = [
-    {
-      id: 1,
-      name: 'Dell 3330',
-      image: laptop,
-      price: 18500.00
-    }
-  ];
+  const [selectedBrand, setSelectedBrand] = useState(null);
 
-  const brandData = [
-    { id: 1, name: 'Dell', image: dell, hasImage: true },
-    { id: 2, name: 'Club Special', image: null, hasImage: false },
-    { id: 3, name: 'Mac', image: mac, hasImage: true },
-    { id: 4, name: 'HP', image: hp, hasImage: true },
-    { id: 5, name: 'Oppo', image: oppo, hasImage: true },
-    { id: 6, name: 'Vivo', image: vivo, hasImage: true },
-  ];
+  const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [employees, setEmployees] = useState([]);
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/products`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+    .then(res => res.json())
+    .then(data => setProducts(Array.isArray(data) ? data : (data.products || [])))
+    .catch(err => { console.error(err); setProducts([]); });
+
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/customers`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const arr = data.showAllcustomers || data;
+        setCustomers(Array.isArray(arr) ? arr : []);
+    })
+    .catch(err => { console.error(err); setCustomers([]); });
+
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/warehouses`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+    .then(res => res.json())
+    .then(data => setWarehouses(Array.isArray(data) ? data : []))
+    .catch(err => { console.error(err); setWarehouses([]); });
+
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+    .then(res => res.json())
+    .then(data => setAccounts(Array.isArray(data) ? data : []))
+    .catch(err => { console.error(err); setAccounts([]); });
+
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/employees`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const arr = data.employees || data;
+        setEmployees(Array.isArray(arr) ? arr : []);
+    })
+    .catch(err => { console.error(err); setEmployees([]); });
+  }, []);
+
+  // Compute unique brands and categories for tabs from products
+  const brandData = Array.from(new Set((Array.isArray(products) ? products : []).map(p => p.brand).filter(Boolean))).map(brand => ({ name: brand, image: null, hasImage: false }));
   
   const paymentMethods = [
     { name: 'Card', icon: '💳', color: 'bg-blue-500' },
@@ -82,24 +121,24 @@ const POS = () => {
   ];
 
   const addToCart = (product) => {
-    const existingItem = cartItems.find(item => item.id === product.id);
+    const existingItem = cartItems.find(item => item._id === product._id);
     if (existingItem) {
       setQuantities(prev => ({
         ...prev,
-        [product.id]: (prev[product.id] || 1) + 1
+        [product._id]: (prev[product._id] || 1) + 1
       }));
     } else {
       setCartItems(prev => [...prev, product]);
       setQuantities(prev => ({
         ...prev,
-        [product.id]: 1
+        [product._id]: 1
       }));
     }
   };
 
   const updateQuantity = (productId, newQuantity) => {
     if (newQuantity <= 0) {
-      setCartItems(prev => prev.filter(item => item.id !== productId));
+      setCartItems(prev => prev.filter(item => item._id !== productId));
       setQuantities(prev => {
         const newQuantities = { ...prev };
         delete newQuantities[productId];
@@ -115,57 +154,97 @@ const POS = () => {
 
   const calculateSubtotal = () => {
     return cartItems.reduce((total, item) => {
-      const quantity = quantities[item.id] || 1;
-      return total + (item.price * quantity);
+      const quantity = quantities[item._id] || 1;
+      return total + (item.productPrice * quantity);
     }, 0);
   };
 
   const calculateGrandTotal = () => {
     const subtotal = calculateSubtotal();
+    const discountAmount = subtotal * (discount / 100) + coupon; // Coupon is absolute, discount is %? Or both absolute? Let's use both as absolute to match AddPurchase logic.
     return subtotal + tax + shipping - discount - coupon;
   };
 
   const getTotalItems = () => {
     return cartItems.reduce((total, item) => {
-      return total + (quantities[item.id] || 1);
+      return total + (quantities[item._id] || 1);
     }, 0);
   };
 
-  const customers = [
-    {
-      id: 1,
-      group: "Regular Customer",
-      name: "Kamal udin Memon",
-      company: "Teacher",
-      email: "",
-      phone: "03133006400",
-      tax: "",
-      address: "Badurabad Colony Dadu, Dadu ,Pakistan",
-      balance: "0.00",
-    },
-    {
-      id: 2,
-      group: "Regular Customer",
-      name: "Farhan Mallah",
-      company: "ELDC Dadu",
-      email: "",
-      phone: "03103635188",
-      tax: "0",
-      address: "ELDC Dado Road Dadu, Dadu ,Pakistan",
-      balance: "0.00",
-    },
-    {
-      id: 3,
-      group: "Regular Customer",
-      name: "Muhammad Saleem Mangi",
-      company: "advocate",
-      email: "",
-      phone: "03003238348",
-      tax: "",
-      address: "Wapda Colony Moro, Moro ,Pakistan",
-      balance: "0.00",
-    },
-  ];
+  const handlePayment = async (method) => {
+    if (method === 'Cancel') {
+      setCartItems([]);
+      setQuantities({});
+      setCoupon(0);
+      setDiscount(0);
+      setTax(0);
+      setShipping(0);
+      return;
+    }
+    
+    if (method === 'Recent transaction') {
+      return;
+    }
+
+    if (!selectedWarehouse) { alert('Please select a warehouse'); return; }
+    if (!selectedCustomer) { alert('Please select a customer'); return; }
+    if (!selectedBiller) { alert('Please select a biller'); return; }
+    if (cartItems.length === 0) { alert('Cart is empty'); return; }
+
+    const submissionData = {
+      warehouse: selectedWarehouse,
+      customer: selectedCustomer,
+      biller: selectedBiller,
+      saleStatus: 'Completed',
+      paymentStatus: 'Paid',
+      paymentMethod: method,
+      accountId: selectedAccount,
+      totalAmount: calculateGrandTotal(),
+      products: cartItems.map(item => ({
+          productId: item._id,
+          productName: item.productName,
+          productCode: item.productCode,
+          productCost: item.productCost,
+          quantity: quantities[item._id] || 1,
+          discount: 0,
+          tax: 0,
+          subTotal: (quantities[item._id] || 1) * item.productPrice
+      })),
+      orderTax: tax,
+      discount: discount + coupon,
+      shippingCost: shipping,
+      Note: ''
+    };
+
+    if (!submissionData.accountId) {
+      delete submissionData.accountId;
+    }
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sales`, {
+        method: 'POST',
+        headers: {
+          'Content-type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(submissionData)
+      });
+      if (!res.ok) throw new Error('Failed to submit sale');
+      
+      alert(`Sale completed successfully via ${method}!`);
+      
+      // Clear Cart
+      setCartItems([]);
+      setQuantities({});
+      setCoupon(0);
+      setDiscount(0);
+      setTax(0);
+      setShipping(0);
+    } catch (err) {
+      console.error(err);
+      alert('Error submitting sale');
+    }
+  };
 
   return (
     <motion.div 
@@ -183,19 +262,29 @@ const POS = () => {
             <div className="bg-white w-full md:justify-around flex items-center rounded shadow-sm mb-4 p-4">
               <div className="w-full flex-col items-center">
                 <div className="w-full flex items-center space-x-2 space-y-2 flex-wrap">
-                  <select className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 max-w-48">
-                    <option>Excel Communication</option>
+                  <select 
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 max-w-48"
+                    value={selectedWarehouse}
+                    onChange={(e) => setSelectedWarehouse(e.target.value)}
+                  >
+                    <option value="">Select warehouse...</option>
+                    {warehouses.map((w, idx) => <option key={idx} value={w.name}>{w.name}</option>)}
                   </select>
-                  <select className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 max-w-48">
-                    <option>Manzoor Ahmed (Excel Com)</option>
+                  <select 
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 max-w-48"
+                    value={selectedBiller}
+                    onChange={(e) => setSelectedBiller(e.target.value)}
+                  >
+                    <option value="">Select biller...</option>
+                    {employees.map((emp) => <option key={emp._id} value={emp.name}>{emp.name}</option>)}
                   </select>
                   <select 
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 max-w-44"
                     value={selectedCustomer}
                     onChange={(e) => setSelectedCustomer(e.target.value)}
                   >
-                    <option>Select customer...</option>
-                    {customers.map((customer) => <option key={customer.id}> {customer.name} </option>)}
+                    <option value="">Select customer...</option>
+                    {customers.map((customer) => <option key={customer._id} value={customer.name}> {customer.name} </option>)}
                   </select>
                   <select 
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 max-w-44"
@@ -203,7 +292,7 @@ const POS = () => {
                     onChange={(e) => setSelectedAccount(e.target.value)}
                   >
                     <option value="">Select account...</option>
-                    {accounts?.map((acc) => <option key={acc._id} value={acc._id}>{acc.accountName}</option>)}
+                    {accounts?.map((acc) => <option key={acc._id} value={acc._id}>{acc.name}</option>)}
                   </select>
                   <button className="p-2 mb-2 border border-gray-300 rounded-md hover:bg-gray-50 flex-shrink-0">
                     <Plus className="h-4 w-4" />
@@ -245,27 +334,27 @@ const POS = () => {
                         </thead>
                         <tbody>
                           {cartItems.map((item) => (
-                            <tr key={item.id} className="border-b">
-                              <td className="py-2 pr-2 max-w-20 truncate">{item.name}</td>
-                              <td className="py-2 pr-2">${item.price.toFixed(2)}</td>
+                            <tr key={item._id} className="border-b">
+                              <td className="py-2 pr-2 max-w-20 truncate">{item.productName || 'Unknown'}</td>
+                              <td className="py-2 pr-2">${(item.productPrice || 0).toFixed(2)}</td>
                               <td className="py-2 pr-2">
                                 <div className="flex items-center space-x-1">
                                   <button 
-                                    onClick={() => updateQuantity(item.id, (quantities[item.id] || 1) - 1)}
+                                    onClick={() => updateQuantity(item._id, (quantities[item._id] || 1) - 1)}
                                     className="w-5 h-5 bg-gray-200 rounded text-xs hover:bg-gray-300 flex items-center justify-center"
                                   >
                                     -
                                   </button>
-                                  <span className="w-6 text-center text-xs">{quantities[item.id] || 1}</span>
+                                  <span className="w-6 text-center text-xs">{quantities[item._id] || 1}</span>
                                   <button 
-                                    onClick={() => updateQuantity(item.id, (quantities[item.id] || 1) + 1)}
+                                    onClick={() => updateQuantity(item._id, (quantities[item._id] || 1) + 1)}
                                     className="w-5 h-5 bg-gray-200 rounded text-xs hover:bg-gray-300 flex items-center justify-center"
                                   >
                                     +
                                   </button>
                                 </div>
                               </td>
-                              <td className="py-2">${((quantities[item.id] || 1) * item.price).toFixed(2)}</td>
+                              <td className="py-2">${((quantities[item._id] || 1) * (item.productPrice || 0)).toFixed(2)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -357,6 +446,7 @@ const POS = () => {
                     {paymentMethods.map((method, index) => (
                       <button
                         key={index}
+                        onClick={() => handlePayment(method.name)}
                         className={`${method.color} text-white p-3 rounded font-bold
                           hover:opacity-90 transition-opacity flex items-center justify-center space-x-1`}
                       >
@@ -392,27 +482,47 @@ const POS = () => {
 
                   {/* Products Grid - Better responsive columns */}
                   <div className="p-4 lg:p-6">
+                    {selectedBrand && activeTab === 'Category' && (
+                      <div className="mb-4 flex items-center justify-between bg-teal-50 p-3 rounded-lg border border-teal-200">
+                        <span className="text-sm font-medium text-teal-800">Showing products for Brand: {selectedBrand}</span>
+                        <button onClick={() => setSelectedBrand(null)} className="text-xs bg-white text-teal-600 px-3 py-1 rounded border border-teal-300 hover:bg-teal-100">Clear Filter</button>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 lg:gap-4">
-                      {activeTab === 'Category' ? products.map((product) => (
+                      {activeTab === 'Category' ? (Array.isArray(products) ? products : [])
+                        .filter(p => !selectedBrand || p.brand === selectedBrand)
+                        .filter(p => !searchProduct || p.productName?.toLowerCase().includes(searchProduct.toLowerCase()) || p.productCode?.toLowerCase().includes(searchProduct.toLowerCase()))
+                        .map((product) => (
                         <div
-                          key={product.id}
+                          key={product._id}
                           className="border border-gray-200 rounded-lg p-3 lg:p-4 hover:shadow-md transition-shadow cursor-pointer"
                           onClick={() => addToCart(product)}
                         >
                           <div className=" bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
-                            <div className="w-12 h-8 lg:w-16 lg:h-12">
-                              <img src={product.image} alt="" />
+                            <div className="w-12 h-8 lg:w-16 lg:h-12 overflow-hidden flex items-center justify-center">
+                              {product.image ? (
+                                <img src={product.image.startsWith('http') ? product.image : `${import.meta.env.VITE_BACKEND_URL}/${product.image.replace(/\\/g, '/')}`} alt={product.productName} className="object-contain w-full h-full" />
+                              ) : (
+                                <span className="text-gray-400 text-xs">No image</span>
+                              )}
                             </div>
                           </div>
-                          <h3 className="text-xs lg:text-sm font-medium text-gray-900 mb-1 truncate">{product.name}</h3>
-                          <p className="text-xs text-gray-500">{product.code}</p>
+                          <h3 className="text-xs lg:text-sm font-medium text-gray-900 mb-1 truncate">{product.productName || 'Unknown'}</h3>
+                          <p className="text-xs text-gray-500">{product.productCode || 'N/A'}</p>
+                          <p className="text-xs font-semibold text-purple-600 mt-1">${(product.productPrice || 0).toFixed(2)}</p>
                         </div>
                       )) : ' '}
 
-                      {activeTab === 'Brand' ? brandData.map((brands) => (
-                        <div className='flex flex-col items-center' key={brands.id} > 
-                          <div> <img className='w-14' src={brands.image} alt="" /></div>
-                          <div className='flex'> <h1> {brands.name} </h1></div>
+                      {activeTab === 'Brand' ? brandData.map((brands, i) => (
+                        <div 
+                          className='flex flex-col items-center p-4 border rounded-lg hover:shadow-md cursor-pointer transition-colors hover:bg-teal-50' 
+                          key={i} 
+                          onClick={() => {
+                            setSelectedBrand(brands.name);
+                            setActiveTab('Category');
+                          }}
+                        > 
+                          <div className='flex'> <h1 className="font-semibold text-gray-700"> {brands.name} </h1></div>
                         </div>         
                       )) : ''}
                     </div>

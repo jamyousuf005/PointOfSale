@@ -36,13 +36,17 @@ const uniformVariants = {
 };
 
 const EditPurchases = () => {
-    const { products: globalProducts, customers, setPurchases } = useContext(ContextApi);
+    const { products: globalProducts, setPurchases } = useContext(ContextApi);
+    const [suppliers, setSuppliers] = useState([]);
     const { id } = useParams();
 
     const [formData, setFormData] = useState({
         warehouse: '',
         supplier: '',
         purchaseStatus: 'Received',
+        paymentStatus: 'Unpaid',
+        paid: 0,
+        accountId: '',
         orderTax: 0,
         discount: 0,
         shippingCost: 0,
@@ -52,6 +56,7 @@ const EditPurchases = () => {
     const [productSearch, setProductSearch] = useState('');
     const [allProducts, setAllProducts] = useState([]);
     const [selectedProducts, setSelectedProducts] = useState([]);
+    const [accounts, setAccounts] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -68,6 +73,9 @@ const EditPurchases = () => {
                     warehouse: data.warehouse,
                     supplier: data.supplier,
                     purchaseStatus: data.purchaseStatus,
+                    paymentStatus: data.paymentStatus || 'Unpaid',
+                    paid: data.paid || 0,
+                    accountId: data.accountId || '',
                     orderTax: data.orderTax,
                     discount: data.discount,
                     shippingCost: data.shippingCost,
@@ -97,10 +105,29 @@ const EditPurchases = () => {
     .then(res => res.json())
     .then(data => setWarehouses(data.map(w => w.name)))
     .catch(err => console.error("Error fetching warehouses:", err));
+
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/suppliers`, {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(res => res.json())
+    .then(data => setSuppliers(data.map(s => s.name)))
+    .catch(err => console.error("Error fetching suppliers:", err));
+
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/accounts`, {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(res => res.json())
+    .then(data => setAccounts(data))
+    .catch(err => console.error("Error fetching accounts:", err));
   }, []);
 
   const [warehouses, setWarehouses] = useState([]);
     const purchaseStatusOptions = ['Received', 'Pending', 'Ordered'];
+    const paymentStatusOptions = ['Paid', 'Partial', 'Unpaid'];
     const taxOptions = [
         { label: 'No Tax', value: 0 },
         { label: 'VAT 5%', value: 5 },
@@ -152,7 +179,7 @@ const EditPurchases = () => {
                 // Recalculate subTotal based on updated values
                 const cost = parseFloat(updatedProduct.productCost) || 0;
                 const quantity = parseFloat(updatedProduct.quantity) || 0;
-                const taxRate = parseFloat(formData.orderTax) || 0;
+                const taxRate = parseFloat(updatedProduct.tax) || 0;
                 const itemDiscount = parseFloat(updatedProduct.discount) || 0;
 
                 const priceAfterDiscount = (cost * quantity) - itemDiscount;
@@ -189,11 +216,21 @@ const EditPurchases = () => {
             return;
         }
 
+        const grandTotal = calculateGrandTotal();
+        const paidAmount = parseFloat(formData.paid) || 0;
+        const dueAmount = grandTotal - paidAmount;
+
         const submissionData = {
             ...formData,
-            products: selectedProducts.map(({ _id, ...product }) => ({ ...product, tax: formData.orderTax, discount: formData.discount, subTotal: calculateSubTotalForProduct(product) })),
-            total: calculateGrandTotal(),
+            products: selectedProducts.map(({ _id, ...product }) => ({ ...product, subTotal: calculateSubTotalForProduct(product) })),
+            total: grandTotal,
+            paid: paidAmount,
+            due: dueAmount,
         };
+
+        if (!submissionData.accountId) {
+            delete submissionData.accountId;
+        }
 
         try {
             const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/purchase/${id}`, {
@@ -228,13 +265,12 @@ const EditPurchases = () => {
     const calculateSubTotalForProduct = (product) => {
         const cost = parseFloat(product.productCost) || 0;
         const quantity = parseFloat(product.quantity) || 0;
-        const orderTaxRate = parseFloat(formData.orderTax) || 0;
-        const orderDiscount = parseFloat(formData.discount) || 0;
+        const taxRate = parseFloat(product.tax) || 0;
+        const itemDiscount = parseFloat(product.discount) || 0;
 
         const totalCost = cost * quantity;
-        const discountAmount = totalCost * (orderDiscount / 100);
-        const subtotalBeforeTax = totalCost - discountAmount;
-        const taxAmount = subtotalBeforeTax * (orderTaxRate / 100);
+        const subtotalBeforeTax = totalCost - itemDiscount;
+        const taxAmount = subtotalBeforeTax * (taxRate / 100);
 
         return subtotalBeforeTax + taxAmount;
     };
@@ -342,7 +378,7 @@ const EditPurchases = () => {
                                 name="supplier"
                                 value={formData.supplier}
                                 onChange={handleInputChange}
-                                options={customers.map(c => c.name)}
+                                options={suppliers}
                                 placeholder="Select supplier..."
                             />
                         </div>
@@ -359,7 +395,51 @@ const EditPurchases = () => {
                                 options={purchaseStatusOptions}
                             />
                         </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Payment Status
+                            </label>
+                            <CustomSelect
+                                name="paymentStatus"
+                                value={formData.paymentStatus}
+                                onChange={handleInputChange}
+                                options={paymentStatusOptions}
+                            />
+                        </div>
                     </div>
+
+                    {(formData.paymentStatus === 'Paid' || formData.paymentStatus === 'Partial') && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-purple-50 p-4 rounded-md">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Amount Paid
+                                </label>
+                                <input
+                                    type="number"
+                                    value={formData.paid}
+                                    onChange={(e) => handleInputChange('paid', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    min="0"
+                                    step="0.01"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Payment Account
+                                </label>
+                                <select
+                                    value={formData.accountId}
+                                    onChange={(e) => handleInputChange('accountId', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                >
+                                    <option value="">Select Account</option>
+                                    {accounts.map(acc => (
+                                        <option key={acc._id} value={acc._id}>{acc.name} - {acc.accountNo}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Select Product
@@ -518,7 +598,7 @@ const EditPurchases = () => {
                         </motion.button>
                     </motion.div>
                     <div className="mt-6 p-4 bg-gray-50 rounded-md">
-                        <div className="text-right">
+                        <div className="flex flex-col items-end space-y-1">
                             <span className="text-lg font-semibold text-gray-900">
                                 Grand Total: ${calculateGrandTotal().toFixed(2)}
                             </span>

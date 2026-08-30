@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
 
 const addSale = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
    customer:{
     type:String,
     required:true

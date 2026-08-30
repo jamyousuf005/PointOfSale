@@ -5,6 +5,7 @@ import Register from './features/auth/Register';
 import Profile from './features/settings/Profile';
 import POS from './features/sales/POS';
 import GeneralSettings from './features/settings/GeneralSettings';
+import Employees from './features/settings/Employees';
 import MyTransactions from './features/dashboard/MyTransactions';
 import Home from "./features/dashboard/Home";
 import {
@@ -32,6 +33,8 @@ import AddAccount from './features/accounts/AddAccount';
 import MoneyTransfer from './features/accounts/MoneyTransfer';
 import CustomerList from './features/customers/CustomerList';
 import AddCustomer from './features/customers/AddCustomer';
+import SupplierList from './features/suppliers/SupplierList';
+import AddSupplier from './features/suppliers/AddSupplier';
 import ProductReport from './features/products/ProductReport';
 import SaleReport from './features/sales/SaleReport';
 import PurchaseReport from './features/purchases/PurchaseReport';
@@ -39,6 +42,7 @@ import PaymentReport from './features/accounts/PaymentReport';
 import Unit from './features/settings/Unit';
 import Brand from './features/settings/Brand';
 import Tax from './features/settings/Tax';
+import Warehouse from './features/settings/Warehouse';
 import EditProduct from './features/products/EditProduct';
 import EditPurchases from './features/purchases/EditPurchases';
 import EditSale from './features/sales/EditSale';
@@ -120,6 +124,9 @@ function App() {
             <Route path="customer/list" element={<CustomerList />} />
             <Route path="customer/add" element={<AddCustomer />} />
 
+            <Route path="supplier/list" element={<SupplierList />} />
+            <Route path="supplier/add" element={<AddSupplier />} />
+
             <Route path="reports/product" element={<ProductReport />} />
             <Route path="reports/sales" element={<SaleReport />} />
             <Route path="reports/purchase" element={<PurchaseReport />} />
@@ -128,7 +135,9 @@ function App() {
             <Route path="settings/unit" element={<Unit />} />
             <Route path="settings/brand" element={<Brand />} />
             <Route path="settings/tax" element={<Tax />} />
+            <Route path="settings/warehouse" element={<Warehouse />} />
             <Route path="settings/general" element={<GeneralSettings />} />
+            <Route path="settings/employees" element={<Employees />} />
             <Route path="POS" element={<POS />} />
 
             <Route path="profile" element={<Profile />} />

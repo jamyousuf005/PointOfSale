@@ -9,20 +9,21 @@ const asyncHandler = require('../../middlewares/asyncHandler');
 // Example Dashboard Aggregation
 const getDashboardKPIs = asyncHandler(async (req, res) => {
     // 1. Total Sales Revenue
-    const sales = await Sale.find({ paymentStatus: 'Paid' });
+    const sales = await Sale.find({ paymentStatus: 'Paid', userId: (req.user.tenantId || req.user._id) });
     const totalSalesRevenue = sales.reduce((acc, sale) => acc + (sale.totalAmount || 0), 0);
 
     // 2. Total Purchase Cost
-    const purchases = await Purchase.find({ paymentStatus: 'Paid' });
+    const purchases = await Purchase.find({ paymentStatus: 'Paid', userId: (req.user.tenantId || req.user._id) });
     const totalPurchaseCost = purchases.reduce((acc, p) => acc + (p.total || 0), 0);
 
     // 3. Low Stock Products (e.g., currentStock <= alertQuantity)
     const lowStockProducts = await Product.find({
+        userId: (req.user.tenantId || req.user._id),
         $expr: { $lte: ["$currentStock", "$alertQuantity"] }
     });
 
     // 4. Total Cash in Accounts
-    const accounts = await Account.find({});
+    const accounts = await Account.find({ userId: (req.user.tenantId || req.user._id) });
     const totalAccountBalance = accounts.reduce((acc, a) => acc + (a.currentBalance || 0), 0);
 
     return res.status(200).json({
@@ -35,10 +36,10 @@ const getDashboardKPIs = asyncHandler(async (req, res) => {
 
 const getPaymentReport = asyncHandler(async (req, res) => {
     // Collect all paid entities
-    const sales = await Sale.find({ paymentStatus: 'Paid' }).lean();
-    const purchases = await Purchase.find({ paymentStatus: 'Paid' }).lean();
-    const saleReturns = await SaleReturn.find({ refundStatus: 'Paid' }).lean();
-    const purchaseReturns = await PurchaseReturn.find({ refundStatus: 'Paid' }).lean();
+    const sales = await Sale.find({ paymentStatus: 'Paid', userId: (req.user.tenantId || req.user._id) }).lean();
+    const purchases = await Purchase.find({ paymentStatus: 'Paid', userId: (req.user.tenantId || req.user._id) }).lean();
+    const saleReturns = await SaleReturn.find({ refundStatus: 'Paid', userId: (req.user.tenantId || req.user._id) }).lean();
+    const purchaseReturns = await PurchaseReturn.find({ refundStatus: 'Paid', userId: (req.user.tenantId || req.user._id) }).lean();
 
     const report = [];
     
@@ -105,9 +106,9 @@ const getPaymentReport = asyncHandler(async (req, res) => {
 });
 
 const getProductReport = asyncHandler(async (req, res) => {
-    const products = await Product.find({}).lean();
-    const sales = await Sale.find({}).lean();
-    const purchases = await Purchase.find({}).lean();
+    const products = await Product.find({ userId: (req.user.tenantId || req.user._id) }).lean();
+    const sales = await Sale.find({ userId: (req.user.tenantId || req.user._id) }).lean();
+    const purchases = await Purchase.find({ userId: (req.user.tenantId || req.user._id) }).lean();
 
     const productMap = {};
 
@@ -157,7 +158,7 @@ const getProductReport = asyncHandler(async (req, res) => {
 });
 
 const getPurchaseReport = asyncHandler(async (req, res) => {
-    const purchases = await Purchase.find({}).sort({ createdAt: -1 }).lean();
+    const purchases = await Purchase.find({ userId: (req.user.tenantId || req.user._id) }).sort({ createdAt: -1 }).lean();
     
     const report = purchases.map(p => ({
         id: p._id,
@@ -175,7 +176,7 @@ const getPurchaseReport = asyncHandler(async (req, res) => {
 });
 
 const getSaleReport = asyncHandler(async (req, res) => {
-    const sales = await Sale.find({}).sort({ createdAt: -1 }).lean();
+    const sales = await Sale.find({ userId: (req.user.tenantId || req.user._id) }).sort({ createdAt: -1 }).lean();
     
     const report = sales.map(s => ({
         id: s._id,

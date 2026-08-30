@@ -37,6 +37,7 @@ const ProductList = () => {
   const [recordsPerPage, setRecordsPerPage] = useState('10');
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null); 
+  const role = localStorage.getItem('role') || 'Cashier';
   
   const [columns, setColumns] = useState([
     { key: 'image', label: 'Image', visible: true },
@@ -151,15 +152,15 @@ const ProductList = () => {
       >
         <TableHeaderControls
           title="Product List"
-          addLabel="+ Add Product"
+          addLabel={role !== 'Cashier' ? "+ Add Product" : undefined}
           onAdd={() => navigate('/product/add')}
-          extraButtons={[
+          extraButtons={role !== 'Cashier' ? [
             {
               label: '📁 Import Product',
               onClick: () => alert('Import feature clicked'),
               className: 'bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1 transition-colors'
             }
-          ]}
+          ] : []}
           recordsPerPage={recordsPerPage}
           onRecordsPerPageChange={setRecordsPerPage}
           searchTerm={searchTerm}
@@ -194,7 +195,7 @@ const ProductList = () => {
                   {isColVisible('alertQuantity') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Quantity</th>}
                   {isColVisible('productUnit') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Unit</th>}
                   {isColVisible('productPrice') && <th className="px-3 py-4 text-left font-semibold text-gray-700">Price</th>}
-                  <th className="px-3 py-4 text-left font-semibold text-gray-700">Action</th>
+                  {role !== 'Cashier' && <th className="px-3 py-4 text-left font-semibold text-gray-700">Action</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -244,30 +245,32 @@ const ProductList = () => {
                         ${parseFloat(product.productPrice || 0).toLocaleString()}
                       </td>
                     )}
-                    <td className="px-3 py-4 relative">
-                      <button
-                        onClick={() => setOpenActionId(prev => (prev === product._id ? null : product._id))}
-                        className="px-3 py-1 text-sm border border-purple-500 text-purple-500 rounded hover:bg-purple-50 transition-colors"
-                      >
-                        Action
-                      </button>
-                      {openActionId === product._id && (
-                        <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 min-w-20">
-                          <button
-                            onClick={() => handleEdit('Edit', product._id)}
-                            className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete('Delete', product._id)}
-                            className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </td>
+                    {role !== 'Cashier' && (
+                      <td className="px-3 py-4 relative">
+                        <button
+                          onClick={() => setOpenActionId(prev => (prev === product._id ? null : product._id))}
+                          className="px-3 py-1 text-sm border border-purple-500 text-purple-500 rounded hover:bg-purple-50 transition-colors"
+                        >
+                          Action
+                        </button>
+                        {openActionId === product._id && (
+                          <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 min-w-20">
+                            <button
+                              onClick={() => handleEdit('Edit', product._id)}
+                              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete('Delete', product._id)}
+                              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

@@ -41,6 +41,7 @@ const CustomerList = () => {
   const [recordsPerPage, setRecordsPerPage] = useState("10");
   const [selectedRows, setSelectedRows] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
+  const role = localStorage.getItem('role') || 'Cashier';
 
   const [columns, setColumns] = useState([
     { key: 'group', label: 'Customer Group', visible: true },
@@ -79,10 +80,25 @@ const CustomerList = () => {
     );
   };
 
-  const handleAction = (action, rowId) => {
+  const handleAction = async (action, rowId) => {
     if (action === 'Delete') {
       if (window.confirm("Are you sure you want to delete this customer?")) {
-        setCustomers((prev) => prev.filter((c) => c.id !== rowId));
+        try {
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001'}/api/customers/${rowId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          
+          if (!response.ok) {
+             throw new Error('Failed to delete customer');
+          }
+          setCustomers((prev) => prev.filter((c) => c.id !== rowId));
+        } catch (error) {
+          console.error(error);
+          alert('Error deleting customer');
+        }
       }
     }
     setOpenActionId(null);
@@ -113,15 +129,15 @@ const CustomerList = () => {
       >
         <TableHeaderControls
           title="Customer List"
-          addLabel="+ Add Customer"
+          addLabel={role !== 'Cashier' ? "+ Add Customer" : undefined}
           onAdd={() => navigate('/customer/add')}
-          extraButtons={[
+          extraButtons={role !== 'Cashier' ? [
             {
               label: '📁 Import Customer',
               onClick: () => alert('Import Customer clicked'),
               className: 'bg-purple-500 hover:bg-purple-600 text-white font-medium px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex items-center gap-1 transition-colors shadow-sm'
             }
-          ]}
+          ] : []}
           recordsPerPage={recordsPerPage}
           onRecordsPerPageChange={setRecordsPerPage}
           searchTerm={searchTerm}
@@ -159,7 +175,7 @@ const CustomerList = () => {
                   {isColVisible('tax') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Tax</th>}
                   {isColVisible('address') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Address</th>}
                   {isColVisible('balance') && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Balance</th>}
-                  <th className="px-3 py-4 font-semibold text-gray-700 text-left">Action</th>
+                  {role !== 'Cashier' && <th className="px-3 py-4 font-semibold text-gray-700 text-left">Action</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -181,36 +197,38 @@ const CustomerList = () => {
                     {isColVisible('tax') && <td className="px-3 py-4 text-sm">{customer.tax || 'N/A'}</td>}
                     {isColVisible('address') && <td className="px-3 py-4 text-sm">{customer.address}</td>}
                     {isColVisible('balance') && <td className="px-3 py-4 text-sm">{customer.balance}</td>}
-                    <td className="px-3 py-4 relative">
-                      <button
-                        onClick={() => setOpenActionId(prev => prev === customer.id ? null : customer.id)}
-                        className="px-3 py-1 text-sm border border-purple-500 text-purple-500 rounded hover:bg-purple-50 transition-colors"
-                      >
-                        Action <ChevronDown className="w-4 h-4 inline ml-1" />
-                      </button>
-                      {openActionId === customer.id && (
-                        <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 min-w-20">
-                          <button
-                            onClick={() => handleAction('View', customer.id)}
-                            className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
-                          >
-                            View
-                          </button>
-                          <button
-                            onClick={() => handleAction('Edit', customer.id)}
-                            className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleAction('Delete', customer.id)}
-                            className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </td>
+                    {role !== 'Cashier' && (
+                      <td className="px-3 py-4 relative">
+                        <button
+                          onClick={() => setOpenActionId(prev => prev === customer.id ? null : customer.id)}
+                          className="px-3 py-1 text-sm border border-purple-500 text-purple-500 rounded hover:bg-purple-50 transition-colors"
+                        >
+                          Action <ChevronDown className="w-4 h-4 inline ml-1" />
+                        </button>
+                        {openActionId === customer.id && (
+                          <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 min-w-20">
+                            <button
+                              onClick={() => handleAction('View', customer.id)}
+                              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={() => handleAction('Edit', customer.id)}
+                              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleAction('Delete', customer.id)}
+                              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

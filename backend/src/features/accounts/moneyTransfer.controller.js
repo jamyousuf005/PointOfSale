@@ -8,6 +8,7 @@ const addMoneyTransfer = asyncHandler(async (req, res) => {
     const referenceNo = 'mt-' + Date.now();
 
     const newTransfer = await MoneyTransfer.create({
+        userId: (req.user.tenantId || req.user._id),
         fromAccount,
         toAccount,
         amount,
@@ -18,7 +19,7 @@ const addMoneyTransfer = asyncHandler(async (req, res) => {
 });
 
 const showAllTransfers = asyncHandler(async (req, res) => {
-    const transfers = await MoneyTransfer.find({}).sort({ createdAt: -1 });
+    const transfers = await MoneyTransfer.find({ userId: (req.user.tenantId || req.user._id) }).sort({ createdAt: -1 });
     return res.json(transfers);
 });
 

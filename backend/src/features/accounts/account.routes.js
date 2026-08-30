@@ -4,13 +4,14 @@ const {addAccount,showAllAccounts, editAccount, showOne, deleteOne}=require('./a
 const ensureAuthenticated = require('../../middlewares/auth')
 
 
+const authorizeRoles = require('../../middlewares/authorizeRoles')
+
 const router = express.Router()
 
-
 router.route('/')
-.all(ensureAuthenticated)
+.all(ensureAuthenticated, authorizeRoles('Admin'))
 .post(addAccount).get(showAllAccounts)
 
-router.route('/:id').all(ensureAuthenticated).delete(deleteOne).put(editAccount).get(showOne)
+router.route('/:id').all(ensureAuthenticated, authorizeRoles('Admin')).delete(deleteOne).put(editAccount).get(showOne)
 
 module.exports=router

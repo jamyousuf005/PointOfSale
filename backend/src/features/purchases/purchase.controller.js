@@ -12,15 +12,15 @@ const addPurchase = asyncHandler(async (req, res) => {
         const body = req.body;
         
         // Create Purchase
-        const newPurchase = await Purchase.create([body], { session });
+        const newPurchase = await Purchase.create([{ ...body, userId: (req.user.tenantId || req.user._id) }], { session });
 
         // Update Inventory for each product if received
         if (body.purchaseStatus === 'Received' && body.products && Array.isArray(body.products)) {
             for (const item of body.products) {
                 const productId = item.productId || item._id; // fallback to _id if productId isn't passed
                 if (productId) {
-                    await Product.findByIdAndUpdate(
-                        productId,
+                    await Product.findOneAndUpdate(
+                        { _id: productId, userId: (req.user.tenantId || req.user._id) },
                         { $inc: { currentStock: Number(item.quantity) || 0 } },
                         { session }
                     );
@@ -30,8 +30,8 @@ const addPurchase = asyncHandler(async (req, res) => {
 
         // Update Account Balance if paid (money leaving)
         if (body.paymentStatus === 'Paid' && body.accountId) {
-            await Account.findByIdAndUpdate(
-                body.accountId,
+            await Account.findOneAndUpdate(
+                { _id: body.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: -(Number(body.total) || 0) } },
                 { session }
             );
@@ -49,7 +49,7 @@ const addPurchase = asyncHandler(async (req, res) => {
 });
 
 const showPurchase = asyncHandler(async (req, res) => {
-    const showAllPurchases = await Purchase.find({});
+    const showAllPurchases = await Purchase.find({ userId: (req.user.tenantId || req.user._id) });
     return res.json({ msg: 'here is response', showAllPurchases });
 });
 
@@ -59,7 +59,7 @@ const deletePurchase = asyncHandler(async (req, res) => {
 
     try {
         const deleteById = req.params.id;
-        const purchase = await Purchase.findById(deleteById).session(session);
+        const purchase = await Purchase.findOne({ _id: deleteById, userId: (req.user.tenantId || req.user._id) }).session(session);
 
         if (!purchase) {
             await session.abortTransaction();
@@ -72,8 +72,8 @@ const deletePurchase = asyncHandler(async (req, res) => {
             for (const item of purchase.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
-                    await Product.findByIdAndUpdate(
-                        productId,
+                    await Product.findOneAndUpdate(
+                        { _id: productId, userId: (req.user.tenantId || req.user._id) },
                         { $inc: { currentStock: -(Number(item.quantity) || 0) } },
                         { session }
                     );
@@ -83,14 +83,14 @@ const deletePurchase = asyncHandler(async (req, res) => {
 
         // Reverse account balance if it was paid
         if (purchase.paymentStatus === 'Paid' && purchase.accountId) {
-            await Account.findByIdAndUpdate(
-                purchase.accountId,
+            await Account.findOneAndUpdate(
+                { _id: purchase.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: (Number(purchase.total) || 0) } },
                 { session }
             );
         }
 
-        await Purchase.findByIdAndDelete(deleteById).session(session);
+        await Purchase.findOneAndDelete({ _id: deleteById, userId: (req.user.tenantId || req.user._id) }).session(session);
 
         await session.commitTransaction();
         session.endSession();
@@ -111,7 +111,7 @@ const editPuchase = asyncHandler(async (req, res) => {
         const id = req.params.id;
         const newBody = req.body;
         
-        const oldPurchase = await Purchase.findById(id).session(session);
+        const oldPurchase = await Purchase.findOne({ _id: id, userId: (req.user.tenantId || req.user._id) }).session(session);
         if (!oldPurchase) {
             await session.abortTransaction();
             session.endSession();
@@ -124,8 +124,8 @@ const editPuchase = asyncHandler(async (req, res) => {
             for (const item of oldPurchase.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
-                    await Product.findByIdAndUpdate(
-                        productId,
+                    await Product.findOneAndUpdate(
+                        { _id: productId, userId: (req.user.tenantId || req.user._id) },
                         { $inc: { currentStock: -(Number(item.quantity) || 0) } },
                         { session }
                     );
@@ -150,8 +150,8 @@ const editPuchase = asyncHandler(async (req, res) => {
         // Handle Financial changes (Account balance)
         // Step 1: Revert old balance if it was Paid
         if (oldPurchase.paymentStatus === 'Paid' && oldPurchase.accountId) {
-            await Account.findByIdAndUpdate(
-                oldPurchase.accountId,
+            await Account.findOneAndUpdate(
+                { _id: oldPurchase.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: (Number(oldPurchase.total) || 0) } },
                 { session }
             );
@@ -167,7 +167,7 @@ const editPuchase = asyncHandler(async (req, res) => {
         }
 
         // Finally, update the document
-        const updatedPurchase = await Purchase.findByIdAndUpdate(id, newBody, { new: true, session });
+        const updatedPurchase = await Purchase.findOneAndUpdate({ _id: id, userId: (req.user.tenantId || req.user._id) }, newBody, { new: true, session });
 
         await session.commitTransaction();
         session.endSession();
@@ -182,7 +182,7 @@ const editPuchase = asyncHandler(async (req, res) => {
 
 const showOnePurchase = asyncHandler(async (req, res) => {
     const id = req.params.id;
-    const purchase = await Purchase.findById(id);
+    const purchase = await Purchase.findOne({ _id: id, userId: (req.user.tenantId || req.user._id) });
     if (!purchase) {
         res.status(404);
         throw new Error('Purchase not found');

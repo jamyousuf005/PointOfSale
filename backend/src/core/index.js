@@ -12,7 +12,14 @@ const userRouter=require('../features/users/user.routes')
 const returnRouter=require('../features/returns/return.routes')
 const reportRouter=require('../features/reports/report.routes')
 const warehouseRouter=require('../features/warehouses/warehouse.routes')
+const supplierRoutes = require('../features/suppliers/supplier.routes');
 const moneyTransferRouter = require('../features/accounts/moneyTransfer.routes')
+const customerRouter = require('../features/customers/customer.routes')
+
+const unitRouter = require('../features/settings/unit.routes')
+const brandRouter = require('../features/settings/brand.routes')
+const taxRouter = require('../features/settings/tax.routes')
+
 const { connectMongoDb } = require('./connection');
 const path = require('path')
 const app = express()
@@ -45,7 +52,13 @@ app.use('/api/accounts',accountsRouter)
 app.use('/api/returns',returnRouter)
 app.use('/api/reports',reportRouter)
 app.use('/api/warehouses',warehouseRouter)
+app.use('/api/suppliers', supplierRoutes)
 app.use('/api/money-transfers', moneyTransferRouter)
+app.use('/api/customers', customerRouter)
+
+app.use('/api/units', unitRouter)
+app.use('/api/brands', brandRouter)
+app.use('/api/taxes', taxRouter)
 
 app.use(errorHandler)
 

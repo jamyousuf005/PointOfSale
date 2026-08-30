@@ -13,6 +13,7 @@ const Navbar = ({ onMenuClick }) => {
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('loggedIn');
+        localStorage.removeItem('role');
         setTimeout(() => {
             window.location.href = '/login';
         }, 1000);

@@ -21,7 +21,7 @@ const addSale = asyncHandler(async (req, res) => {
         }
         
         // Create Sale
-        const newSale = await Sale.create([body], { session });
+        const newSale = await Sale.create([{ ...body, userId: (req.user.tenantId || req.user._id) }], { session });
 
         // Update Inventory for each product (decrease stock)
         // Only if saleStatus is 'Completed'
@@ -29,8 +29,8 @@ const addSale = asyncHandler(async (req, res) => {
             for (const item of body.products) {
                 const productId = item.productId || item._id; // fallback to _id if productId isn't passed
                 if (productId) {
-                    await Product.findByIdAndUpdate(
-                        productId,
+                    await Product.findOneAndUpdate(
+                        { _id: productId, userId: (req.user.tenantId || req.user._id) },
                         { $inc: { currentStock: -(Number(item.quantity) || 1) } },
                         { session }
                     );
@@ -40,8 +40,8 @@ const addSale = asyncHandler(async (req, res) => {
 
         // Update Account Balance if paid
         if (body.paymentStatus === 'Paid' && body.accountId) {
-            await Account.findByIdAndUpdate(
-                body.accountId,
+            await Account.findOneAndUpdate(
+                { _id: body.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: (Number(body.totalAmount) || 0) } },
                 { session }
             );
@@ -59,7 +59,7 @@ const addSale = asyncHandler(async (req, res) => {
 });
 
 const showSales = asyncHandler(async (req, res) => {
-    const ShowAllSales = await Sale.find({});
+    const ShowAllSales = await Sale.find({ userId: (req.user.tenantId || req.user._id) });
     return res.status(200).json(ShowAllSales);
 });
 
@@ -69,7 +69,7 @@ const deleteSale = asyncHandler(async (req, res) => {
 
     try {
         const id = req.params.id;
-        const sale = await Sale.findById(id).session(session);
+        const sale = await Sale.findOne({ _id: id, userId: (req.user.tenantId || req.user._id) }).session(session);
 
         if (!sale) {
             await session.abortTransaction();
@@ -82,8 +82,8 @@ const deleteSale = asyncHandler(async (req, res) => {
             for (const item of sale.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
-                    await Product.findByIdAndUpdate(
-                        productId,
+                    await Product.findOneAndUpdate(
+                        { _id: productId, userId: (req.user.tenantId || req.user._id) },
                         { $inc: { currentStock: (Number(item.quantity) || 1) } },
                         { session }
                     );
@@ -93,14 +93,14 @@ const deleteSale = asyncHandler(async (req, res) => {
 
         // Reverse account balance if it was paid (deduct money)
         if (sale.paymentStatus === 'Paid' && sale.accountId) {
-            await Account.findByIdAndUpdate(
-                sale.accountId,
+            await Account.findOneAndUpdate(
+                { _id: sale.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: -(Number(sale.totalAmount) || 0) } },
                 { session }
             );
         }
 
-        await Sale.findByIdAndDelete(id).session(session);
+        await Sale.findOneAndDelete({ _id: id, userId: (req.user.tenantId || req.user._id) }).session(session);
 
         await session.commitTransaction();
         session.endSession();
@@ -115,7 +115,7 @@ const deleteSale = asyncHandler(async (req, res) => {
 
 const showOne = asyncHandler(async (req, res) => {
     const id = req.params.id;
-    const productWithId = await Sale.findById(id);
+    const productWithId = await Sale.findOne({ _id: id, userId: (req.user.tenantId || req.user._id) });
     if (!productWithId) {
         res.status(404);
         throw new Error('Sale not found');
@@ -131,7 +131,7 @@ const editSale = asyncHandler(async (req, res) => {
         const id = req.params.id;
         const newBody = req.body;
         
-        const oldSale = await Sale.findById(id).session(session);
+        const oldSale = await Sale.findOne({ _id: id, userId: (req.user.tenantId || req.user._id) }).session(session);
         if (!oldSale) {
             await session.abortTransaction();
             session.endSession();
@@ -143,8 +143,8 @@ const editSale = asyncHandler(async (req, res) => {
             for (const item of oldSale.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
-                    await Product.findByIdAndUpdate(
-                        productId,
+                    await Product.findOneAndUpdate(
+                        { _id: productId, userId: (req.user.tenantId || req.user._id) },
                         { $inc: { currentStock: (Number(item.quantity) || 1) } },
                         { session }
                     );
@@ -157,8 +157,8 @@ const editSale = asyncHandler(async (req, res) => {
             for (const item of newBody.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
-                    await Product.findByIdAndUpdate(
-                        productId,
+                    await Product.findOneAndUpdate(
+                        { _id: productId, userId: (req.user.tenantId || req.user._id) },
                         { $inc: { currentStock: -(Number(item.quantity) || 1) } },
                         { session }
                     );
@@ -168,8 +168,8 @@ const editSale = asyncHandler(async (req, res) => {
 
         // Step 1: Revert old balance if it was Paid
         if (oldSale.paymentStatus === 'Paid' && oldSale.accountId) {
-            await Account.findByIdAndUpdate(
-                oldSale.accountId,
+            await Account.findOneAndUpdate(
+                { _id: oldSale.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: -(Number(oldSale.totalAmount) || 0) } },
                 { session }
             );
@@ -177,14 +177,14 @@ const editSale = asyncHandler(async (req, res) => {
 
         // Step 2: Apply new balance if it is Paid
         if (newBody.paymentStatus === 'Paid' && newBody.accountId) {
-            await Account.findByIdAndUpdate(
-                newBody.accountId,
+            await Account.findOneAndUpdate(
+                { _id: newBody.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: (Number(newBody.totalAmount) || 0) } },
                 { session }
             );
         }
 
-        const updatedSale = await Sale.findByIdAndUpdate(id, newBody, { new: true, session });
+        const updatedSale = await Sale.findOneAndUpdate({ _id: id, userId: (req.user.tenantId || req.user._id) }, newBody, { new: true, session });
 
         await session.commitTransaction();
         session.endSession();

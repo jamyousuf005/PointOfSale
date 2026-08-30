@@ -36,7 +36,7 @@ const parseProductData = (req) => {
 const addProducts = asyncHandler(async (req, res) => {
     try {
         const productData = parseProductData(req);
-        const newProduct = await Product.create(productData);
+        const newProduct = await Product.create({ ...productData, userId: (req.user.tenantId || req.user._id) });
         return res.status(201).json({ msg: "product added", newProduct });
     } catch (error) {
         if (error.code === 11000) {
@@ -49,7 +49,7 @@ const addProducts = asyncHandler(async (req, res) => {
 
 const deleteProduct = asyncHandler(async (req, res) => {
     const deleteById = req.params.id;
-    await Product.findByIdAndDelete(deleteById);
+    await Product.findOneAndDelete({ _id: deleteById, userId: (req.user.tenantId || req.user._id) });
     return res.json({ msg: "product deleted" });
 });
 
@@ -57,7 +57,7 @@ const editProduct = asyncHandler(async (req, res) => {
     try {
         const editById = req.params.id;
         const productData = parseProductData(req);
-        const edited = await Product.findByIdAndUpdate(editById, productData, { new: true });
+        const edited = await Product.findOneAndUpdate({ _id: editById, userId: (req.user.tenantId || req.user._id) }, productData, { new: true });
         return res.json({ msg: "product being updated", edited });
     } catch (error) {
         if (error.code === 11000) {
@@ -69,13 +69,13 @@ const editProduct = asyncHandler(async (req, res) => {
 });
 
 const showProducts = asyncHandler(async (req, res) => {
-    const products = await Product.find({}).sort({ createdAt: -1 });
+    const products = await Product.find({ userId: (req.user.tenantId || req.user._id) }).sort({ createdAt: -1 });
     return res.status(200).json(products);
 });
 
 const showOneProduct = asyncHandler(async (req, res) => {
     const id = req.params.id;
-    const product = await Product.findById(id);
+    const product = await Product.findOne({ _id: id, userId: (req.user.tenantId || req.user._id) });
     if (!product) {
         res.status(404);
         throw new Error('Product not found');

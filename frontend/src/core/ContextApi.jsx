@@ -6,41 +6,7 @@ export const ContextApi = createContext();
 
 export const ContextProvider = ({ children }) => {
 
-  const [customers, setCustomers] = useState([
-    {
-      id: 1,
-      group: "Regular Customer",
-      name: "Kamal udin Memon",
-      company: "Teacher",
-      email: "",
-      phone: "03133006400",
-      tax: "",
-      address: "Badurabad Colony Dadu, Dadu ,Pakistan",
-      balance: "0.00",
-    },
-    {
-      id: 2,
-      group: "Regular Customer",
-      name: "Farhan Mallah",
-      company: "ELDC Dadu",
-      email: "",
-      phone: "03103635188",
-      tax: "0",
-      address: "ELDC Dado Road Dadu, Dadu ,Pakistan",
-      balance: "0.00",
-    },
-    {
-      id: 3,
-      group: "Regular Customer",
-      name: "Muhammad Saleem Mangi",
-      company: "advocate",
-      email: "",
-      phone: "03003238348",
-      tax: "",
-      address: "Wapda Colony Moro, Moro ,Pakistan",
-      balance: "0.00",
-    },
-  ]);
+  const [customers, setCustomers] = useState([]);
 
 
 
@@ -63,7 +29,9 @@ export const ContextProvider = ({ children }) => {
       }
     })
       .then((res) => res.json())
-      .then((data) => setAccounts(data))
+      .then((data) => {
+        if (Array.isArray(data)) setAccounts(data);
+      })
       .catch((err) => console.error(err))
   }, [])
 
@@ -74,7 +42,9 @@ export const ContextProvider = ({ children }) => {
       }
     })
       .then((res) => res.json())
-      .then((data) => setSales(data))
+      .then((data) => {
+        if (Array.isArray(data)) setSales(data);
+      })
       .catch((err) => console.error(err))
   }, [])
 
@@ -85,7 +55,9 @@ export const ContextProvider = ({ children }) => {
       }
     })
       .then((res) => res.json())
-      .then((data) => setProducts(data))
+      .then((data) => {
+        if (Array.isArray(data)) setProducts(data);
+      })
       .catch((err) => console.error('Error fetching products:', err))
   }, [])
 
@@ -96,9 +68,24 @@ export const ContextProvider = ({ children }) => {
       }
     })
       .then((res) => res.json())
-      .then((data) => setPurchases(data.showAllPurchases))
+      .then((data) => {
+        if (data && Array.isArray(data.showAllPurchases)) setPurchases(data.showAllPurchases);
+      })
       .catch((err) => console.error('error fetching api', err))
 
+  }, [])
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001'}/api/customers`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setCustomers(data);
+      })
+      .catch((err) => console.error('Error fetching customers:', err))
   }, [])
 
   return (
