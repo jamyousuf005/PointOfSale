@@ -1,6 +1,8 @@
 const Sale = require('./sale.model');
 const Product = require('../products/product.model');
 const Account = require('../accounts/account.model');
+const Customer = require('../customers/customer.model');
+const InventoryMovement = require('../inventory/inventoryMovement.model');
 const mongoose = require('mongoose');
 const asyncHandler = require('../../middlewares/asyncHandler');
 
@@ -29,11 +31,21 @@ const addSale = asyncHandler(async (req, res) => {
             for (const item of body.products) {
                 const productId = item.productId || item._id; // fallback to _id if productId isn't passed
                 if (productId) {
+                    const qty = Number(item.quantity) || 1;
                     await Product.findOneAndUpdate(
                         { _id: productId, userId: (req.user.tenantId || req.user._id) },
-                        { $inc: { currentStock: -(Number(item.quantity) || 1) } },
+                        { $inc: { currentStock: -qty } },
                         { session }
                     );
+
+                    await InventoryMovement.create([{
+                        userId: (req.user.tenantId || req.user._id),
+                        productId: productId,
+                        type: 'SALE',
+                        quantity: -qty,
+                        referenceId: newSale[0]._id,
+                        notes: 'Sale created'
+                    }], { session });
                 }
             }
         }
@@ -43,6 +55,13 @@ const addSale = asyncHandler(async (req, res) => {
             await Account.findOneAndUpdate(
                 { _id: body.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: (Number(body.totalAmount) || 0) } },
+                { session }
+            );
+        } else if (body.paymentStatus !== 'Paid' && body.customer) {
+            // Update Customer Balance if not paid
+            await Customer.findOneAndUpdate(
+                { name: body.customer, userId: (req.user.tenantId || req.user._id) },
+                { $inc: { balance: (Number(body.totalAmount) || 0) } },
                 { session }
             );
         }
@@ -82,11 +101,21 @@ const deleteSale = asyncHandler(async (req, res) => {
             for (const item of sale.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
+                    const qty = Number(item.quantity) || 1;
                     await Product.findOneAndUpdate(
                         { _id: productId, userId: (req.user.tenantId || req.user._id) },
-                        { $inc: { currentStock: (Number(item.quantity) || 1) } },
+                        { $inc: { currentStock: qty } },
                         { session }
                     );
+
+                    await InventoryMovement.create([{
+                        userId: (req.user.tenantId || req.user._id),
+                        productId: productId,
+                        type: 'ADJUSTMENT',
+                        quantity: qty,
+                        referenceId: sale._id,
+                        notes: 'Sale deleted (reverted)'
+                    }], { session });
                 }
             }
         }
@@ -96,6 +125,13 @@ const deleteSale = asyncHandler(async (req, res) => {
             await Account.findOneAndUpdate(
                 { _id: sale.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: -(Number(sale.totalAmount) || 0) } },
+                { session }
+            );
+        } else if (sale.paymentStatus !== 'Paid' && sale.customer) {
+            // Reverse customer balance if it was not paid (deduct money)
+            await Customer.findOneAndUpdate(
+                { name: sale.customer, userId: (req.user.tenantId || req.user._id) },
+                { $inc: { balance: -(Number(sale.totalAmount) || 0) } },
                 { session }
             );
         }
@@ -143,11 +179,21 @@ const editSale = asyncHandler(async (req, res) => {
             for (const item of oldSale.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
+                    const qty = Number(item.quantity) || 1;
                     await Product.findOneAndUpdate(
                         { _id: productId, userId: (req.user.tenantId || req.user._id) },
-                        { $inc: { currentStock: (Number(item.quantity) || 1) } },
+                        { $inc: { currentStock: qty } },
                         { session }
                     );
+                    
+                    await InventoryMovement.create([{
+                        userId: (req.user.tenantId || req.user._id),
+                        productId: productId,
+                        type: 'ADJUSTMENT',
+                        quantity: qty,
+                        referenceId: oldSale._id,
+                        notes: 'Sale edited (reverted old stock)'
+                    }], { session });
                 }
             }
         }
@@ -157,11 +203,21 @@ const editSale = asyncHandler(async (req, res) => {
             for (const item of newBody.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
+                    const qty = Number(item.quantity) || 1;
                     await Product.findOneAndUpdate(
                         { _id: productId, userId: (req.user.tenantId || req.user._id) },
-                        { $inc: { currentStock: -(Number(item.quantity) || 1) } },
+                        { $inc: { currentStock: -qty } },
                         { session }
                     );
+
+                    await InventoryMovement.create([{
+                        userId: (req.user.tenantId || req.user._id),
+                        productId: productId,
+                        type: 'SALE',
+                        quantity: -qty,
+                        referenceId: id, // The sale ID
+                        notes: 'Sale edited (applied new stock)'
+                    }], { session });
                 }
             }
         }
@@ -173,6 +229,13 @@ const editSale = asyncHandler(async (req, res) => {
                 { $inc: { currentBalance: -(Number(oldSale.totalAmount) || 0) } },
                 { session }
             );
+        } else if (oldSale.paymentStatus !== 'Paid' && oldSale.customer) {
+            // Revert customer balance
+            await Customer.findOneAndUpdate(
+                { name: oldSale.customer, userId: (req.user.tenantId || req.user._id) },
+                { $inc: { balance: -(Number(oldSale.totalAmount) || 0) } },
+                { session }
+            );
         }
 
         // Step 2: Apply new balance if it is Paid
@@ -180,6 +243,13 @@ const editSale = asyncHandler(async (req, res) => {
             await Account.findOneAndUpdate(
                 { _id: newBody.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: (Number(newBody.totalAmount) || 0) } },
+                { session }
+            );
+        } else if (newBody.paymentStatus !== 'Paid' && newBody.customer) {
+            // Apply new customer balance
+            await Customer.findOneAndUpdate(
+                { name: newBody.customer, userId: (req.user.tenantId || req.user._id) },
+                { $inc: { balance: (Number(newBody.totalAmount) || 0) } },
                 { session }
             );
         }

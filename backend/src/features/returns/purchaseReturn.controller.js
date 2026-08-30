@@ -1,6 +1,8 @@
 const PurchaseReturn = require('./purchaseReturn.model');
 const Product = require('../products/product.model');
 const Account = require('../accounts/account.model');
+const Purchase = require('../purchases/purchase.model');
+const InventoryMovement = require('../inventory/inventoryMovement.model');
 const mongoose = require('mongoose');
 const asyncHandler = require('../../middlewares/asyncHandler');
 
@@ -14,16 +16,40 @@ const addPurchaseReturn = asyncHandler(async (req, res) => {
         // Create Purchase Return
         const newPurchaseReturn = await PurchaseReturn.create([{ ...body, userId: (req.user.tenantId || req.user._id) }], { session });
 
+        // Retrieve original purchase to validate
+        let originalPurchase = null;
+        if (body.purchaseId) {
+            originalPurchase = await Purchase.findById(body.purchaseId).session(session);
+        }
+
         // Update Inventory for each product (decrease stock)
         if (body.products && Array.isArray(body.products)) {
             for (const item of body.products) {
                 const productId = item.productId || item._id;
+                const returnQty = Number(item.quantity) || 1;
+
+                if (originalPurchase) {
+                    const boughtItem = originalPurchase.products.find(p => p.productId.toString() === productId.toString());
+                    if (!boughtItem || boughtItem.quantity < returnQty) {
+                        throw new Error(`Cannot return quantity ${returnQty} for product ${productId}, exceeds originally purchased quantity or product not in purchase.`);
+                    }
+                }
+
                 if (productId) {
                     await Product.findOneAndUpdate(
                         { _id: productId, userId: (req.user.tenantId || req.user._id) },
-                        { $inc: { currentStock: -(Number(item.quantity) || 1) } },
+                        { $inc: { currentStock: -returnQty } },
                         { session }
                     );
+
+                    await InventoryMovement.create([{
+                        userId: (req.user.tenantId || req.user._id),
+                        productId: productId,
+                        type: 'PURCHASE_RETURN',
+                        quantity: -returnQty,
+                        referenceId: newPurchaseReturn[0]._id,
+                        notes: 'Purchase return processed'
+                    }], { session });
                 }
             }
         }

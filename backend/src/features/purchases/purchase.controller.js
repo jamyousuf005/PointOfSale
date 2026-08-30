@@ -1,6 +1,8 @@
 const Purchase = require('./purchase.model');
 const Product = require('../products/product.model');
 const Account = require('../accounts/account.model');
+const Supplier = require('../suppliers/supplier.model');
+const InventoryMovement = require('../inventory/inventoryMovement.model');
 const mongoose = require('mongoose');
 const asyncHandler = require('../../middlewares/asyncHandler');
 
@@ -19,11 +21,21 @@ const addPurchase = asyncHandler(async (req, res) => {
             for (const item of body.products) {
                 const productId = item.productId || item._id; // fallback to _id if productId isn't passed
                 if (productId) {
+                    const qty = Number(item.quantity) || 0;
                     await Product.findOneAndUpdate(
                         { _id: productId, userId: (req.user.tenantId || req.user._id) },
-                        { $inc: { currentStock: Number(item.quantity) || 0 } },
+                        { $inc: { currentStock: qty } },
                         { session }
                     );
+
+                    await InventoryMovement.create([{
+                        userId: (req.user.tenantId || req.user._id),
+                        productId: productId,
+                        type: 'PURCHASE',
+                        quantity: qty,
+                        referenceId: newPurchase[0]._id,
+                        notes: 'Purchase created'
+                    }], { session });
                 }
             }
         }
@@ -33,6 +45,13 @@ const addPurchase = asyncHandler(async (req, res) => {
             await Account.findOneAndUpdate(
                 { _id: body.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: -(Number(body.total) || 0) } },
+                { session }
+            );
+        } else if (body.paymentStatus !== 'Paid' && body.supplier) {
+            // Update Supplier Balance if not paid (we owe them money)
+            await Supplier.findOneAndUpdate(
+                { name: body.supplier, userId: (req.user.tenantId || req.user._id) },
+                { $inc: { balance: (Number(body.total) || 0) } },
                 { session }
             );
         }
@@ -72,11 +91,21 @@ const deletePurchase = asyncHandler(async (req, res) => {
             for (const item of purchase.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
+                    const qty = Number(item.quantity) || 0;
                     await Product.findOneAndUpdate(
                         { _id: productId, userId: (req.user.tenantId || req.user._id) },
-                        { $inc: { currentStock: -(Number(item.quantity) || 0) } },
+                        { $inc: { currentStock: -qty } },
                         { session }
                     );
+
+                    await InventoryMovement.create([{
+                        userId: (req.user.tenantId || req.user._id),
+                        productId: productId,
+                        type: 'ADJUSTMENT',
+                        quantity: -qty,
+                        referenceId: purchase._id,
+                        notes: 'Purchase deleted (reverted)'
+                    }], { session });
                 }
             }
         }
@@ -86,6 +115,13 @@ const deletePurchase = asyncHandler(async (req, res) => {
             await Account.findOneAndUpdate(
                 { _id: purchase.accountId, userId: (req.user.tenantId || req.user._id) },
                 { $inc: { currentBalance: (Number(purchase.total) || 0) } },
+                { session }
+            );
+        } else if (purchase.paymentStatus !== 'Paid' && purchase.supplier) {
+            // Reverse Supplier Balance if not paid (we owe them less money)
+            await Supplier.findOneAndUpdate(
+                { name: purchase.supplier, userId: (req.user.tenantId || req.user._id) },
+                { $inc: { balance: -(Number(purchase.total) || 0) } },
                 { session }
             );
         }
@@ -124,11 +160,21 @@ const editPuchase = asyncHandler(async (req, res) => {
             for (const item of oldPurchase.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
+                    const qty = Number(item.quantity) || 0;
                     await Product.findOneAndUpdate(
                         { _id: productId, userId: (req.user.tenantId || req.user._id) },
-                        { $inc: { currentStock: -(Number(item.quantity) || 0) } },
+                        { $inc: { currentStock: -qty } },
                         { session }
                     );
+
+                    await InventoryMovement.create([{
+                        userId: (req.user.tenantId || req.user._id),
+                        productId: productId,
+                        type: 'ADJUSTMENT',
+                        quantity: -qty,
+                        referenceId: oldPurchase._id,
+                        notes: 'Purchase edited (reverted old stock)'
+                    }], { session });
                 }
             }
         }
@@ -138,11 +184,21 @@ const editPuchase = asyncHandler(async (req, res) => {
             for (const item of newBody.products) {
                 const productId = item.productId || item._id;
                 if (productId) {
+                    const qty = Number(item.quantity) || 0;
                     await Product.findByIdAndUpdate(
                         productId,
-                        { $inc: { currentStock: Number(item.quantity) || 0 } },
+                        { $inc: { currentStock: qty } },
                         { session }
                     );
+
+                    await InventoryMovement.create([{
+                        userId: (req.user.tenantId || req.user._id),
+                        productId: productId,
+                        type: 'PURCHASE',
+                        quantity: qty,
+                        referenceId: id,
+                        notes: 'Purchase edited (applied new stock)'
+                    }], { session });
                 }
             }
         }
@@ -155,6 +211,13 @@ const editPuchase = asyncHandler(async (req, res) => {
                 { $inc: { currentBalance: (Number(oldPurchase.total) || 0) } },
                 { session }
             );
+        } else if (oldPurchase.paymentStatus !== 'Paid' && oldPurchase.supplier) {
+            // Revert old Supplier Balance
+            await Supplier.findOneAndUpdate(
+                { name: oldPurchase.supplier, userId: (req.user.tenantId || req.user._id) },
+                { $inc: { balance: -(Number(oldPurchase.total) || 0) } },
+                { session }
+            );
         }
 
         // Step 2: Apply new balance if it is Paid
@@ -162,6 +225,13 @@ const editPuchase = asyncHandler(async (req, res) => {
             await Account.findByIdAndUpdate(
                 newBody.accountId,
                 { $inc: { currentBalance: -(Number(newBody.total) || 0) } },
+                { session }
+            );
+        } else if (newBody.paymentStatus !== 'Paid' && newBody.supplier) {
+            // Apply new Supplier Balance
+            await Supplier.findOneAndUpdate(
+                { name: newBody.supplier, userId: (req.user.tenantId || req.user._id) },
+                { $inc: { balance: (Number(newBody.total) || 0) } },
                 { session }
             );
         }

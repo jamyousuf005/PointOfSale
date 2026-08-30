@@ -1,28 +1,18 @@
 # Point of Sale (POS) System
 
-A comprehensive, full-stack Point of Sale web application built with the MERN stack (MongoDB, Express, React, Node.js). This system is designed to handle retail operations including sales, inventory management, purchasing, accounting, and reporting.
+A powerful, robust, and highly scalable Point of Sale web application built with the MERN stack (MongoDB, Express, React, Node.js). Engineered to give you complete control over your retail operations—from atomic transaction processing and dynamic dashboards to intricate inventory auditing and accounting balance tracking.
 
-## 🚀 Features
+## 🚀 Features & Capabilities
 
-- **Authentication & Authorization**: Secure user login and registration using JWT.
-- **Dashboard**: High-level overview of transactions and system statistics.
-- **Product Management**: 
-  - Add, edit, delete, and list products.
-  - Manage categories, brands, and units.
-- **Sales & POS Interface**:
-  - Dedicated POS screen for rapid checkout.
-  - Record sales, manage sale returns, and import sales data.
-- **Purchases Management**:
-  - Record and track purchases from suppliers.
-  - Manage purchase returns.
-- **Account & Finance**:
-  - Track accounts, money transfers, and payments.
-- **Customer Management**:
-  - Maintain a database of customers and their transaction history.
-- **Comprehensive Reporting**:
-  - Generate reports for products, sales, purchases, and payments.
-- **System Settings**:
-  - Configure taxes, general application settings, and user profiles.
+- **⚡ Lightning-Fast POS Interface**: Dedicated, responsive Point of Sale screen designed for rapid checkouts and seamless user experience.
+- **🏢 True Multi-Tenant Architecture**: Built from the ground up as a SaaS-ready platform. Complete data isolation ensures multiple businesses can securely operate within the same system independently.
+- **📊 Real-Time Dynamic Dashboard**: Instantly view your business's health with live data on Revenue, Profit, Sale Returns, and Purchase Returns. Features a beautiful Yearly Report chart to track growth.
+- **📈 Advanced Inventory Movement Ledger**: Never lose track of your stock. Every single transaction (Sales, Purchases, Returns, Adjustments) creates an immutable audit trail detailing exactly why, when, and how your stock quantities changed.
+- **🧾 Intelligent Return Validations**: Bulletproof return system that strictly validates against original purchases and sales, ensuring no one can return more stock than what was originally transacted.
+- **💼 Automated Accounting & Balances**: Dynamically tracks Customer and Supplier balances. Whenever a sale or purchase is marked as anything other than "Paid", the system automatically tracks the owed or pending balances with pinpoint accuracy.
+- **👥 Comprehensive Entity Management**: Beautiful interfaces to add, edit, and track Products, Categories, Brands, Customers, Suppliers, and Employees.
+- **🔐 Secure Authentication**: Robust JWT-based authentication and authorization with role-based access control.
+- **📑 Detailed Analytics & Reporting**: Generate detailed tables and PDF reports for products, sales, purchases, and payments using powerful data-grids.
 
 ## 💻 Tech Stack
 
@@ -87,7 +77,7 @@ npm install
   ```
 - Start the backend development server:
 ```bash
-npm run start
+npm start
 ```
 *(The server should run on `http://localhost:8001`)*
 
@@ -101,12 +91,12 @@ npm install
 ```bash
 npm run dev
 ```
-*(The React app will typically run on `http://localhost:5173`)*
+*(The React app will typically run on `http://localhost:5174`)*
 
 ## 📖 Walkthrough & Usage
 
 1. **Start the Application**: Ensure both backend and frontend servers are running.
-2. **Access the Web App**: Navigate to the frontend URL (e.g., `http://localhost:5173`).
+2. **Access the Web App**: Navigate to the frontend URL (e.g., `http://localhost:5174`).
 3. **Login / Register**: Create a new account or log in if you already have credentials.
 4. **Dashboard Navigation**: Use the sidebar to navigate between Products, Purchases, Sales, Accounts, and Reports.
 5. **POS Terminal**: Head over to the `Sales > POS` route to access the rapid checkout interface. Add products to the cart and process payments instantly.

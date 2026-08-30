@@ -26,11 +26,43 @@ const getDashboardKPIs = asyncHandler(async (req, res) => {
     const accounts = await Account.find({ userId: (req.user.tenantId || req.user._id) });
     const totalAccountBalance = accounts.reduce((acc, a) => acc + (a.currentBalance || 0), 0);
 
+    // 5. Total Sale Returns
+    const saleReturns = await SaleReturn.find({ userId: (req.user.tenantId || req.user._id) });
+    const totalSaleReturns = saleReturns.reduce((acc, sr) => acc + (sr.totalRefundAmount || 0), 0);
+
+    // 6. Total Purchase Returns
+    const purchaseReturns = await PurchaseReturn.find({ userId: (req.user.tenantId || req.user._id) });
+    const totalPurchaseReturns = purchaseReturns.reduce((acc, pr) => acc + (pr.totalRefundAmount || 0), 0);
+
+    const profit = totalSalesRevenue - totalPurchaseCost - totalSaleReturns + totalPurchaseReturns;
+
+    // 7. Monthly Data for Yearly Chart
+    const currentYear = new Date().getFullYear();
+    const monthlyData = Array.from({ length: 12 }, () => ({ purchased: 0, sold: 0 }));
+
+    sales.forEach(sale => {
+        const date = new Date(sale.createdAt);
+        if (date.getFullYear() === currentYear) {
+            monthlyData[date.getMonth()].sold += (sale.totalAmount || 0);
+        }
+    });
+
+    purchases.forEach(purchase => {
+        const date = new Date(purchase.createdAt);
+        if (date.getFullYear() === currentYear) {
+            monthlyData[date.getMonth()].purchased += (purchase.total || 0);
+        }
+    });
+
     return res.status(200).json({
         totalSalesRevenue,
         totalPurchaseCost,
         lowStockProductsCount: lowStockProducts.length,
-        totalAccountBalance
+        totalAccountBalance,
+        totalSaleReturns,
+        totalPurchaseReturns,
+        profit,
+        monthlyData
     });
 });
 

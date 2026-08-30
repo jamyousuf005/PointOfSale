@@ -7,7 +7,8 @@ import BottomWidgets from './BottomWidgets';
 import { motion } from 'framer-motion';
 import * as Chart from 'chart.js';
 import { ToastContainer } from 'react-toastify';
-const YearlyReportChart = ({ width = "100%", height = "600px" }) => {
+
+const YearlyReportChart = ({ width = "100%", height = "600px", monthlyData = [] }) => {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
 
@@ -28,7 +29,7 @@ const YearlyReportChart = ({ width = "100%", height = "600px" }) => {
         datasets: [
           {
             label: 'Purchased Amount',
-            data: [0, 0, 0, 0, 0, 155000, 0, 0, 0, 0, 0, 0],
+            data: monthlyData.length ? monthlyData.map(d => d.purchased) : Array(12).fill(0),
             backgroundColor: '#8B5A96',
             borderColor: '#8B5A96',
             borderWidth: 0,
@@ -36,7 +37,7 @@ const YearlyReportChart = ({ width = "100%", height = "600px" }) => {
           },
           {
             label: 'Sold Amount',
-            data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            data: monthlyData.length ? monthlyData.map(d => d.sold) : Array(12).fill(0),
             backgroundColor: '#FF8A65',
             borderColor: '#FF8A65',
             borderWidth: 0,
@@ -123,7 +124,7 @@ const YearlyReportChart = ({ width = "100%", height = "600px" }) => {
         chartInstance.current.destroy();
       }
     };
-  }, []);
+  }, [monthlyData]);
 
   return (
     <div 
@@ -190,12 +191,36 @@ const uniformVariants = {
 };
 
 const Home = () => {
-
-     const [loggedIn,setLoggedin]=useState()
+    const [loggedIn, setLoggedin] = useState('');
+    const [kpiData, setKpiData] = useState({
+        totalSalesRevenue: 0,
+        totalSaleReturns: 0,
+        totalPurchaseReturns: 0,
+        profit: 0,
+        monthlyData: []
+    });
     
-     useEffect(() => {
-      setLoggedin(localStorage.getItem('loggedIn'))
-     }, [])
+    useEffect(() => {
+        setLoggedin(localStorage.getItem('loggedIn'));
+        
+        const fetchDashboardData = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001'}/api/reports/dashboard-kpis`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                setKpiData(data);
+            } catch (error) {
+                console.error("Error fetching dashboard data", error);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
      
   
   return (
@@ -222,16 +247,16 @@ const Home = () => {
         variants={gridVariants}
       >
         <motion.div variants={uniformVariants}>
-          <TopBox label="Revenue" icon={FaDollarSign} value={80} color="purple" />
+          <TopBox label="Revenue" icon={FaDollarSign} value={kpiData.totalSalesRevenue || 0} color="purple" />
         </motion.div>
         <motion.div variants={uniformVariants}>
-          <TopBox label="Sale Return" icon={FaUsers} value={20} color="orange" />
+          <TopBox label="Sale Return" icon={FaUsers} value={kpiData.totalSaleReturns || 0} color="orange" />
         </motion.div>
         <motion.div variants={uniformVariants}>
-          <TopBox label="Purchase Return" icon={FaShoppingCart} value={15} color="cornflowerblue" />
+          <TopBox label="Purchase Return" icon={FaShoppingCart} value={kpiData.totalPurchaseReturns || 0} color="cornflowerblue" />
         </motion.div>
         <motion.div variants={uniformVariants}>
-          <TopBox label="Profit" icon={FaTrophy} value={65} color="magenta" />
+          <TopBox label="Profit" icon={FaTrophy} value={kpiData.profit || 0} color="magenta" />
         </motion.div>
       </motion.div>
 
@@ -248,7 +273,7 @@ const Home = () => {
             min-h-[400px] sm:min-h-[500px] md:min-h-[600px] lg:min-h-[680px]"
           variants={uniformVariants}
         >
-          <YearlyReportChart/>
+          <YearlyReportChart monthlyData={kpiData.monthlyData || []} />
         </motion.div>
       </motion.div> 
 

@@ -17,6 +17,10 @@ const supplierSchema = new mongoose.Schema({
     },
     company: {
         type: String
+    },
+    balance: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 

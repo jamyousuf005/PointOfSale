@@ -1,6 +1,8 @@
 const SaleReturn = require('./saleReturn.model');
 const Product = require('../products/product.model');
 const Account = require('../accounts/account.model');
+const Sale = require('../sales/sale.model');
+const InventoryMovement = require('../inventory/inventoryMovement.model');
 const mongoose = require('mongoose');
 const asyncHandler = require('../../middlewares/asyncHandler');
 
@@ -14,16 +16,40 @@ const addSaleReturn = asyncHandler(async (req, res) => {
         // Create Sale Return
         const newSaleReturn = await SaleReturn.create([{ ...body, userId: (req.user.tenantId || req.user._id) }], { session });
 
+        // Retrieve original sale to validate
+        let originalSale = null;
+        if (body.saleId) {
+            originalSale = await Sale.findById(body.saleId).session(session);
+        }
+
         // Update Inventory for each product (increase stock)
         if (body.products && Array.isArray(body.products)) {
             for (const item of body.products) {
                 const productId = item.productId || item._id;
+                const returnQty = Number(item.quantity) || 1;
+
+                if (originalSale) {
+                    const soldItem = originalSale.products.find(p => p.productId.toString() === productId.toString());
+                    if (!soldItem || soldItem.quantity < returnQty) {
+                        throw new Error(`Cannot return quantity ${returnQty} for product ${productId}, exceeds originally sold quantity or product not in sale.`);
+                    }
+                }
+
                 if (productId) {
                     await Product.findOneAndUpdate(
                         { _id: productId, userId: (req.user.tenantId || req.user._id) },
-                        { $inc: { currentStock: (Number(item.quantity) || 1) } },
+                        { $inc: { currentStock: returnQty } },
                         { session }
                     );
+
+                    await InventoryMovement.create([{
+                        userId: (req.user.tenantId || req.user._id),
+                        productId: productId,
+                        type: 'SALE_RETURN',
+                        quantity: returnQty,
+                        referenceId: newSaleReturn[0]._id,
+                        notes: 'Sale return processed'
+                    }], { session });
                 }
             }
         }
