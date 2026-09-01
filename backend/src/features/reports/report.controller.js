@@ -57,7 +57,7 @@ const getDashboardKPIs = asyncHandler(async (req, res) => {
     // 8. Recent Transactions
     const recentSales = await Sale.find({ userId: (req.user.tenantId || req.user._id) }).sort({ createdAt: -1 }).limit(5).lean();
     const recentPurchases = await Purchase.find({ userId: (req.user.tenantId || req.user._id) }).sort({ createdAt: -1 }).limit(5).lean();
-    
+
     const recentTransactions = {
         sales: recentSales.map(s => ({
             date: new Date(s.createdAt).toLocaleDateString('en-GB'),
@@ -70,12 +70,16 @@ const getDashboardKPIs = asyncHandler(async (req, res) => {
             date: new Date(p.createdAt).toLocaleDateString('en-GB'),
             reference: 'PUR-' + p._id.toString().slice(-6),
             customer: p.supplier || 'N/A',
-            status: p.status || 'Completed',
+            status: p.purchaseStatus || 'Completed',
             grandTotal: p.total || 0
         }))
     };
 
     // 9. Best Sellers
+    // const currentMonth = new Date().getMonth();
+    // const bestSellersMonthMap = {};
+    // const bestSellersYearMap = {};
+
     const currentMonth = new Date().getMonth();
     const bestSellersMonthMap = {};
     const bestSellersYearMap = {};
@@ -90,7 +94,7 @@ const getDashboardKPIs = asyncHandler(async (req, res) => {
                 const id = item.productId ? item.productId.toString() : item.productName;
                 const name = item.productName || 'Unknown';
                 const code = item.productCode || '';
-                
+
                 if (!bestSellersYearMap[id]) {
                     bestSellersYearMap[id] = { id, name, code, qty: 0, total: 0 };
                 }
@@ -136,7 +140,7 @@ const getPaymentReport = asyncHandler(async (req, res) => {
     const purchaseReturns = await PurchaseReturn.find({ refundStatus: 'Paid', userId: (req.user.tenantId || req.user._id) }).lean();
 
     const report = [];
-    
+
     sales.forEach(s => {
         report.push({
             id: s._id,
@@ -253,7 +257,7 @@ const getProductReport = asyncHandler(async (req, res) => {
 
 const getPurchaseReport = asyncHandler(async (req, res) => {
     const purchases = await Purchase.find({ userId: (req.user.tenantId || req.user._id) }).sort({ createdAt: -1 }).lean();
-    
+
     const report = purchases.map(p => ({
         id: p._id,
         date: p.createdAt,
@@ -271,7 +275,7 @@ const getPurchaseReport = asyncHandler(async (req, res) => {
 
 const getSaleReport = asyncHandler(async (req, res) => {
     const sales = await Sale.find({ userId: (req.user.tenantId || req.user._id) }).sort({ createdAt: -1 }).lean();
-    
+
     const report = sales.map(s => ({
         id: s._id,
         date: s.createdAt,
